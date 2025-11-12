@@ -41,17 +41,23 @@ export default function ProyectoDetalle() {
   const project = slug ? findProjectBySlug(slug) : undefined;
 
   const targetImgRef = useRef<HTMLImageElement | null>(null);
-  const [hideUntilDone, setHideUntilDone] = useState(true);
+
+  // 🔒 Mantén oculta la imagen real hasta que el overlay termine (sin transiciones)
+  const [waitingForOverlay, setWaitingForOverlay] = useState(true);
 
   useEffect(() => {
-    const onDone = () => setHideUntilDone(false);
+    // se mostrará cuando SharedImageTransition termine
+    const onDone = () => setWaitingForOverlay(false);
     window.addEventListener("shared-image-done", onDone);
-    const fallback = window.setTimeout(() => setHideUntilDone(false), 600);
+
+    // Fallback por si no hay overlay en curso (o se interrumpe)
+    const fallback = window.setTimeout(() => setWaitingForOverlay(false), 900);
+
     return () => {
-      clearTimeout(fallback);
       window.removeEventListener("shared-image-done", onDone);
+      clearTimeout(fallback);
     };
-  }, []);
+  }, [slug]);
 
   // Enviamos el rect destino (de la imagen grande) cuando cargue
   useEffect(() => {
@@ -69,8 +75,13 @@ export default function ProyectoDetalle() {
       window.dispatchEvent(new CustomEvent("shared-image-animate", { detail: { to } }));
     };
 
-    if (img.complete && img.naturalWidth) { sendRect(); return; }
-    const onLoad = () => sendRect();
+    // Doble RAF para asegurar layout estable
+    const sendRectSynced = () => {
+      requestAnimationFrame(() => requestAnimationFrame(sendRect));
+    };
+
+    if (img.complete && img.naturalWidth) { sendRectSynced(); return; }
+    const onLoad = () => sendRectSynced();
     img.addEventListener("load", onLoad);
     return () => img.removeEventListener("load", onLoad);
   }, [slug]);
@@ -84,8 +95,8 @@ export default function ProyectoDetalle() {
     );
   }
 
-  const imgUrl = resolveGrande(project.file);     // SIEMPRE la grande
-  const sharedKey = toSharedKey(project.file);    // clave estable para match
+  const imgUrl = resolveGrande(project.file);     // grande
+  const sharedKey = toSharedKey(project.file);
   const description = (project.description || "").replace(/\n+/g, " ").trim();
 
   const handleBack = (ev?: React.MouseEvent) => {
@@ -93,9 +104,7 @@ export default function ProyectoDetalle() {
     const img = targetImgRef.current;
     if (!img) { navigate("/"); return; }
 
-    // Ocultamos la imagen del detalle inmediatamente para no ver duplicado
-    setHideUntilDone(true);
-
+    // NO ocultamos la imagen real al volver; el clon pasa por encima
     const rect = img.getBoundingClientRect();
     const from: Rect = {
       top: rect.top + window.scrollY,
@@ -110,10 +119,9 @@ export default function ProyectoDetalle() {
       from,
       objectFit,
       direction: "back" as const,
-      sharedKey, // 👈 clave que Inicio entiende
+      sharedKey,
     };
 
-    // Guardamos y navegamos; NO disparamos evento aquí
     (window as any).__sharedImagePending = detail;
     navigate("/");
   };
@@ -137,7 +145,12 @@ export default function ProyectoDetalle() {
           </div>
         </aside>
 
-        <figure className="inline-block shrink-0 align-top" data-cursor="drag" data-cursor-size="92" data-cursor-label="Arrastra">
+        <figure
+          className="inline-block shrink-0 align-top"
+          data-cursor="drag"
+          data-cursor-size="92"
+          data-cursor-label="Arrastra"
+        >
           <img
             ref={targetImgRef}
             src={imgUrl}
@@ -147,11 +160,10 @@ export default function ProyectoDetalle() {
             decoding="async"
             loading="eager"
             fetchPriority="high"
+            // 👇 sin transiciones; solo oculto/visible para evitar duplicado
             style={{
               imageRendering: "auto",
-              opacity: hideUntilDone ? 0 : 1,
-              visibility: hideUntilDone ? "hidden" : "visible",
-              transition: "opacity 160ms ease, visibility 0s linear 160ms",
+              visibility: waitingForOverlay ? "hidden" : "visible",
             }}
           />
         </figure>
