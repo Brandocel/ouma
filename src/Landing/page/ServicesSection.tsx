@@ -26,23 +26,24 @@ export default function ServicesSection() {
     return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
-  // ✅ Scroll horizontal con drag + inercia tipo Blog
+  // ✅ Scroll horizontal con rueda + drag + inercia
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
 
+    // --- rueda con easing ---
     let raf = 0;
     let target = 0;
-    const stopRAF = () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = 0;
-    };
+    const stopRAF = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
     const step = () => {
       const cur = el.scrollLeft;
       const next = cur + (target - cur) * 0.18;
       el.scrollLeft = Math.abs(next - cur) < 0.5 ? target : next;
-      if (Math.abs(target - el.scrollLeft) > 0.5) raf = requestAnimationFrame(step);
-      else stopRAF();
+      if (Math.abs(target - el.scrollLeft) > 0.5) {
+        raf = requestAnimationFrame(step);
+      } else {
+        stopRAF();
+      }
     };
 
     const onWheel = (e: WheelEvent) => {
@@ -57,35 +58,26 @@ export default function ServicesSection() {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
 
-    // Drag + inercia
-    let startX = 0,
-      lastX = 0,
-      lastT = 0,
-      v = 0,
-      rafMom = 0,
-      isDragging = false;
+    // --- drag con inercia ---
+    let lastX = 0, lastT = 0, v = 0, rafMom = 0, isDragging = false;
 
-    const stopMomentum = () => {
-      if (rafMom) cancelAnimationFrame(rafMom);
-      rafMom = 0;
-    };
+    const stopMomentum = () => { if (rafMom) cancelAnimationFrame(rafMom); rafMom = 0; };
     const momentum = () => {
       v *= 0.95;
       if (Math.abs(v) < 0.25) return stopMomentum();
       el.scrollLeft -= v;
-      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth)
-        return stopMomentum();
+      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth) return stopMomentum();
       rafMom = requestAnimationFrame(momentum);
     };
 
     const down = (x: number) => {
       isDragging = true;
       movedRef.current = 0;
-      startX = x;
       lastX = x;
       lastT = performance.now();
       v = 0;
       stopMomentum();
+      el.classList.add("cursor-grabbing");
     };
 
     const move = (x: number) => {
@@ -103,14 +95,12 @@ export default function ServicesSection() {
     const up = () => {
       if (!isDragging) return;
       isDragging = false;
+      el.classList.remove("cursor-grabbing");
       rafMom = requestAnimationFrame(momentum);
     };
 
     // Mouse
-    const md = (e: MouseEvent) => {
-      e.preventDefault();
-      down(e.clientX);
-    };
+    const md = (e: MouseEvent) => { e.preventDefault(); down(e.clientX); };
     const mm = (e: MouseEvent) => move(e.clientX);
     const mu = () => up();
 
@@ -173,12 +163,9 @@ export default function ServicesSection() {
     },
   ];
 
-  // ✅ Diseño original, textos más pequeños + imágenes rectas
+  // ✅ Diseño original
   return (
-    <main
-      ref={sectionRef}
-      className="bg-neutral-50 text-neutral-900 flex justify-center items-center"
-    >
+    <main ref={sectionRef} className="bg-neutral-50 text-neutral-900 flex justify-center items-center">
       {/* DESKTOP */}
       <div
         ref={scrollerRef}
@@ -198,10 +185,7 @@ export default function ServicesSection() {
               key={s.id}
               onClick={() => handleCardClick(s.slug)}
               className="flex flex-col cursor-pointer transition-transform duration-300 hover:scale-[1.01]"
-              style={{
-                width: "clamp(45rem, 30vw, 57.5rem)",
-                flexShrink: 0,
-              }}
+              style={{ width: "clamp(45rem, 30vw, 57.5rem)", flexShrink: 0 }}
             >
               <h2
                 className="font-medium"
