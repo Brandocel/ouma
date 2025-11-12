@@ -15,7 +15,7 @@ export const blogArticles: BlogArticle[] = [
     slug: "la-madera-sin-disfraz",
     // ⛳ Debe ser el MISMO nombre de archivo que usas a la izquierda
     // (sin rutas, solo el filename, porque el glob busca por filename)
-    file: "img8.png",        // <-- antes: "img5.png"
+    file: "img5.png",        // <-- antes: "img5.png"
     title: "La Madera sin Disfráz",
     description: "Una reflexión de OUMA",
     year: "2024",
@@ -25,7 +25,7 @@ export const blogArticles: BlogArticle[] = [
       "En su estado crudo, la madera habla. Se contrae, se abre, se oxida, cambia de color. Su superficie registra el paso del tiempo, el clima, el contacto humano. Cada grieta es una conversación con el entorno.",
     ],
     images: {
-      left: "/src/assets/blog/img8.png", // la pequeña (480x302 en layout)
+      left: "/src/assets/blog/img5.png", // la pequeña (480x302 en layout)
       right: "/src/assets/blog/img9.png" // la grande (700x478 en layout)
     },
   },
