@@ -1,6 +1,26 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
+/** 🔽 Mapear todas las imágenes de /src/assets/servicios para que Vite las incluya en build */
+const serviciosImgs = import.meta.glob("/src/assets/servicios/*.{png,jpg,jpeg,webp,svg}", {
+  eager: true,
+  query: "?url",
+}) as Record<string, { default: string }>;
+
+/** Devuelve la URL final empaquetada para un nombre o ruta.
+ *  Puedes pasar "CASA-MAY-2.png" o "src/assets/servicios/CASA-MAY-2.png"
+ */
+function resolveServicioImg(nameOrPath: string): string {
+  // si viene http/https ya no tocamos
+  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
+
+  const parts = nameOrPath.split("/");
+  const file = parts[parts.length - 1]; // basename
+  // Busca por coincidencia al final del path (…/servicios/<file>)
+  const hit = Object.entries(serviciosImgs).find(([p]) => p.endsWith("/" + file));
+  return hit?.[1]?.default ?? nameOrPath; // fallback (dev)
+}
+
 export default function ServicesSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -141,6 +161,7 @@ export default function ServicesSection() {
     if (movedRef.current < 10) navigate(`/servicios/${slug}`);
   };
 
+  /** Puedes dejar solo el nombre del archivo para cada imagen */
   const services = [
     {
       id: 1,
@@ -149,7 +170,7 @@ export default function ServicesSection() {
       title: "Diseño Arquitectónico",
       description:
         "Desarrollamos proyectos arquitectónicos desde la conceptualización hasta el detalle ejecutivo. Cada diseño nace de la empatía y se plasma con claridad, buscando siempre la armonía entre forma, función y alma.",
-      image: "src/assets/servicios/CASA-MAY-2.png",
+      image: "CASA-MAY-2.png",
     },
     {
       id: 2,
@@ -158,7 +179,7 @@ export default function ServicesSection() {
       title: "Construcción Residencial y Comercial",
       description:
         "Ejecutamos obras con precisión, orden y compromiso, cuidando tanto la calidad de los materiales como la experiencia del cliente durante el proceso constructivo.",
-      image: "src/assets/servicios/8.png",
+      image: "8.png",
     },
     {
       id: 3,
@@ -167,7 +188,7 @@ export default function ServicesSection() {
       title: "Proyectos Integrales",
       description:
         "Ofrecemos un acompañamiento completo: desde el anteproyecto hasta la entrega final. Una solución llave en mano para quienes buscan claridad, confianza y resultados a la altura de sus expectativas.",
-      image: "src/assets/servicios/a5.png",
+      image: "a5.png",
     },
   ];
 
@@ -234,7 +255,7 @@ export default function ServicesSection() {
                 }}
               >
                 <img
-                  src={s.image}
+                  src={resolveServicioImg(s.image)}
                   alt={s.title}
                   className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
                   draggable={false}
@@ -263,7 +284,7 @@ export default function ServicesSection() {
             </p>
             <div className="overflow-hidden">
               <img
-                src={s.image}
+                src={resolveServicioImg(s.image)}
                 alt={s.title}
                 className="object-cover w-full h-auto transition-transform duration-300 hover:scale-105"
                 draggable={false}

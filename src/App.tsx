@@ -18,6 +18,30 @@ export default function App() {
     slot.style.opacity = showSplash ? "0" : "1";
   }, [showSplash]);
 
+  // ✅ Auto-aplicar [data-global-scale] a scrollers horizontales del sitio
+  useEffect(() => {
+    const apply = () => {
+      // Ajusta o amplía los selectores si tienes variaciones
+      const nodes = document.querySelectorAll<HTMLElement>(
+        '.overflow-x-auto, [data-hscroll], [data-scrollable="x"]'
+      );
+      nodes.forEach((el) => {
+        if (!el.hasAttribute("data-global-scale")) {
+          el.setAttribute("data-global-scale", "");
+        }
+      });
+    };
+
+    // Marca los actuales
+    apply();
+
+    // Marca los que aparezcan después (rutas, renders perezosos, etc.)
+    const mo = new MutationObserver(() => apply());
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    return () => mo.disconnect();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900 font-cabinet">
       {showSplash && (
