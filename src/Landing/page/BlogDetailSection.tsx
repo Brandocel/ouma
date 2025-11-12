@@ -190,7 +190,7 @@ export default function BlogDetailSection() {
 
           {/* 🔹 COLUMNA DERECHA (Imagen grande) */}
           <div
-            className="overflow-hidden bg-[#D9D9D9] rounded-sm flex-0"
+            className="overflow-hidden bg-[#D9D9D9] rounded-sm flex-shrink-0"
             style={{
               width: "clamp(42rem, 35vw, 70rem)", // 700px
               height: "clamp(28rem, 25vw, 47.8rem)", // 478px
