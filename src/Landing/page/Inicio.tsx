@@ -1,3 +1,4 @@
+// src/Landing/page/Inicio.tsx
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -50,14 +51,15 @@ export default function Inicio() {
   const navigate = useNavigate();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
 
-  // estado de gesto
+  // gesto
   const draggingRef = useRef(false);
   const movedRef = useRef(0);
   const startXRef = useRef(0);
   const startTimeRef = useRef(0);
 
-  // alturas dinámicas
+  // Alturas base: solo guardamos header/footer y altura útil (no tocamos estilos de tarjeta)
   useEffect(() => {
     const root = document.documentElement;
     const header = document.querySelector("header") as HTMLElement | null;
@@ -65,13 +67,16 @@ export default function Inicio() {
     const apply = () => {
       const hH = header?.getBoundingClientRect().height ?? 0;
       const fH = footer?.getBoundingClientRect().height ?? 0;
+      const vh = Math.max(window.innerHeight, document.documentElement.clientHeight);
       root.style.setProperty("--header-h", `${Math.round(hH)}px`);
       root.style.setProperty("--footer-h", `${Math.round(fH)}px`);
+      root.style.setProperty("--useful-h", `${Math.max(0, Math.round(vh - hH - fH))}px`);
     };
     apply();
     const ro = new ResizeObserver(apply);
     header && ro.observe(header);
     footer && ro.observe(footer);
+    sectionRef.current && ro.observe(sectionRef.current);
     window.addEventListener("resize", apply);
     return () => { ro.disconnect(); window.removeEventListener("resize", apply); };
   }, []);
@@ -92,7 +97,7 @@ export default function Inicio() {
     return raw.sort((a, b) => (pos(a.file) - pos(b.file)) || a.file.localeCompare(b.file));
   }, []);
 
-  // --- util para placeholder (transición “back”)
+  // --- util placeholder (transición back) (sin cambios)
   function makePlaceholder(r: Rect) {
     const ph = document.createElement("div");
     ph.setAttribute("data-shared-placeholder", "1");
@@ -111,7 +116,7 @@ export default function Inicio() {
     return ph;
   }
 
-  // Boot “back” transición compartida
+  // Boot back (igual)
   useLayoutEffect(() => {
     const pending = (window as any).__sharedImagePending as
       | { src: string; from: Rect; objectFit?: string; direction?: "back"; sharedKey?: string }
@@ -160,7 +165,7 @@ export default function Inicio() {
     return () => window.clearInterval(id);
   }, []);
 
-  // ===== Scroll: rueda + drag con snap dinámico + TAP SINTÉTICO =====
+  // ===== Scroll horizontal + inercia (igual) =====
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -170,7 +175,6 @@ export default function Inicio() {
     const setSnap = (v: string) => ((el.style as any).scrollSnapType = v);
     const armIdle = (ms = 220) => { if (snapIdle) window.clearTimeout(snapIdle); snapIdle = window.setTimeout(() => setSnap(originalSnap), ms); };
 
-    // Rueda fluida
     let raf = 0;
     let target = 0;
     const stopRAF = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
@@ -199,7 +203,6 @@ export default function Inicio() {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
 
-    // Drag + inercia + TAP sintético
     let startX = 0, lastX = 0, lastT = 0, v = 0, rafMom = 0;
     const stopMomentum = () => { if (rafMom) cancelAnimationFrame(rafMom); rafMom = 0; };
     const momentum = () => {
@@ -216,11 +219,9 @@ export default function Inicio() {
       movedRef.current = 0;
       startXRef.current = e.clientX;
       startTimeRef.current = performance.now();
-
       setSnap("none");
       stopMomentum(); stopRAF();
       el.setPointerCapture(e.pointerId);
-
       startX = e.clientX;
       lastX = startX;
       lastT = performance.now();
@@ -233,13 +234,9 @@ export default function Inicio() {
       const now = performance.now();
       const dx = e.clientX - lastX;
       const dt = now - lastT || 16.7;
-
-      // Mueve el scroll acorde al arrastre
       el.scrollLeft -= dx;
-
       v = dx * (16.7 / dt);
       lastX = e.clientX; lastT = now;
-
       movedRef.current += Math.abs(dx);
     };
 
@@ -247,18 +244,14 @@ export default function Inicio() {
       if (!draggingRef.current) return;
       draggingRef.current = false;
       try { el.releasePointerCapture(e.pointerId); } catch {}
-
       const totalMoved = Math.abs(e.clientX - startXRef.current);
       const elapsed = performance.now() - startTimeRef.current;
 
-      // Si NO se arrastró (tap) => navegar al detalle del item bajo el dedo
       if (totalMoved <= 10 && elapsed <= 250) {
-        // encuentra el elemento bajo el puntero
         const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
         const card = hit?.closest?.("article[role='button']") as HTMLElement | null;
         if (card) {
           const imgEl = card.querySelector("img") as HTMLImageElement | null;
-          // disparo evento de detalle (mismo que en onClick)
           if (imgEl) {
             const r = imgEl.getBoundingClientRect();
             const from = { top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height };
@@ -267,14 +260,11 @@ export default function Inicio() {
               detail: { src: imgEl.src, from, objectFit, direction: "forward" }
             }));
           }
-          // navega usando el slug en data-attr
           const slug = card.getAttribute("data-slug");
           if (slug) navigate(`/proyectos/${slug}`);
-          return; // no lances inercia si fue tap
+          return;
         }
       }
-
-      // si sí hubo arrastre: aplica inercia
       rafMom = requestAnimationFrame(momentum);
     };
 
@@ -295,7 +285,51 @@ export default function Inicio() {
     };
   }, [navigate]);
 
-  // Navegación a detalle (también la usa el fallback por teclado)
+  // Ajuste POR ALTURA: escala cada tarjeta si su alto natural > útil (sin modificar diseño)
+  useLayoutEffect(() => {
+    const resize = () => {
+      const usefulPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--useful-h")) || 0;
+      if (!usefulPx) return;
+
+      const cards = innerRef.current?.querySelectorAll<HTMLElement>("article[data-slug]") ?? [];
+      cards.forEach((card) => {
+        // el contenido real de la tarjeta (lo que escalamos)
+        const inner = card.querySelector<HTMLElement>("[data-card-inner]");
+        if (!inner) return;
+
+        // reset para medir su altura natural
+        inner.style.transform = "none";
+        inner.style.willChange = "transform";
+
+        const naturalH = inner.offsetHeight; // imagen (aspect) + textos + paddings
+        const safe = 6; // respirito mínimo
+        const maxH = Math.max(0, usefulPx - safe);
+
+        const scale = naturalH > 0 ? Math.min(1, maxH / naturalH) : 1;
+
+        inner.style.transformOrigin = "top left";
+        inner.style.transform = scale < 1 ? `translateZ(0) scale(${scale})` : "none";
+
+        // para que el contenedor no “brinque”, fija altura visual del article
+        (card.style as any).minHeight = `${Math.min(naturalH * scale, maxH)}px`;
+        (card.style as any).maxHeight = `${Math.min(naturalH * scale, maxH)}px`;
+      });
+    };
+
+    resize();
+
+    const ro = new ResizeObserver(resize);
+    sectionRef.current && ro.observe(sectionRef.current);
+    innerRef.current && ro.observe(innerRef.current);
+    window.addEventListener("resize", resize);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  // Navegación fallback teclado
   const goDetail = useCallback((slug: string, imgEl?: HTMLImageElement | null) => {
     if (!imgEl) { navigate(`/proyectos/${slug}`); return; }
     const r = imgEl.getBoundingClientRect();
@@ -309,7 +343,6 @@ export default function Inicio() {
 
   const handleCardClick = useCallback(
     (slug: string, ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
-      // si hubo arrastre, ignora
       if (draggingRef.current || movedRef.current > 18) return;
       const articleEl = ev?.currentTarget as HTMLElement | null;
       const imgEl = articleEl?.querySelector("img") as HTMLImageElement | null;
@@ -320,6 +353,7 @@ export default function Inicio() {
 
   return (
     <section
+      ref={sectionRef}
       className="mx-auto w-full max-w-[1440px] px-2 md:px-3 pt-8 md:pt-40 flex-1 min-h-0 flex flex-col"
       style={{
         minHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
@@ -333,7 +367,6 @@ export default function Inicio() {
         data-cursor="drag"
         data-cursor-label="Arrastra"
       >
-        {/* w-max conserva layout; 4 col en xl con width fija ~320px */}
         <div ref={innerRef} className="flex w-max gap-6 pr-0">
           {items.map((it) => (
             <article
@@ -350,24 +383,28 @@ export default function Inicio() {
                 if (e.key === "Enter" || e.key === " ") handleCardClick(it.slug, e);
               }}
             >
-              <div
-                className="aspect-[4/3] overflow-hidden"
-                data-cursor="drag"
-                data-cursor-label="Arrastra"
-              >
-                <img
-                  src={it.src}
-                  alt={it.title}
-                  className="h-full w-full object-contain-sm object-center transition-transform duration-300 ease-in-out hover:scale-[1.03]"
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                  data-shared-key={it.key}
-                />
-              </div>
+              {/* 🔒 Todo el contenido original, solo envuelto para poder escalar */}
+              <div data-card-inner>
+                <div
+                  className="aspect-[4/3] overflow-hidden"
+                  data-cursor="drag"
+                  data-cursor-label="Arrastra"
+                >
+                  <img
+                    src={it.src}
+                    alt={it.title}
+                    className="h-full w-full object-contain-sm object-center transition-transform duration-300 ease-in-out hover:scale-[1.03]"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
+                    data-shared-key={it.key}
+                  />
+                </div>
 
-              <div className="pt-3">
-                <h3 className="font-medium text-neutral-900 text-[17px] leading-[1.25]">{it.title}</h3>
-                <p className="font-medium text-neutral-500 text-[11px] tracking-wide">{it.place}</p>
+                {/* Título y descripción “pegados” a la imagen, como pediste */}
+                <div className="pt-3">
+                  <h3 className="font-medium text-neutral-900 text-[17px] leading-[1.25]">{it.title}</h3>
+                  <p className="font-medium text-neutral-500 text-[11px] tracking-wide">{it.place}</p>
+                </div>
               </div>
             </article>
           ))}
