@@ -1,110 +1,70 @@
-import { useEffect, useRef } from "react";
+// src/Landing/page/DesignSection.tsx
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function ServicesSection() {
+import ImgMain from "/src/assets/Servicios_Detalles/img1.png";
+import ImgTopRight from "/src/assets/Servicios_Detalles/img2.png";
+import ImgMidRight from "/src/assets/Servicios_Detalles/img3.png";
+import ImgWideRight from "/src/assets/Servicios_Detalles/img4.png";
+
+export default function DesignSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const movedRef = useRef(0);
 
-  // ✅ Altura dinámica (viewport - header - footer)
+  // Altura mínima de la sección (como ServicesSection)
   useEffect(() => {
     const updateHeight = () => {
       if (!sectionRef.current) return;
       const vh = window.innerHeight;
-      const availableHeight = vh - 218;
-      const reducedHeight =
+      const availableHeight = vh - 218; // header + footer
+      const reduced =
         window.innerWidth < 768
           ? availableHeight * 0.75
           : window.innerWidth < 1280
           ? availableHeight * 0.85
           : availableHeight;
-      sectionRef.current.style.minHeight = `${reducedHeight}px`;
+      sectionRef.current.style.minHeight = `${reduced}px`;
     };
     updateHeight();
     window.addEventListener("resize", updateHeight);
     return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
-  // ✅ Scroll horizontal con rueda + drag + inercia
+  // Scroll horizontal (rueda + drag con inercia)
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
 
-    // --- rueda con easing ---
-    let raf = 0;
-    let target = 0;
-    const stopRAF = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
-    const step = () => {
-      const cur = el.scrollLeft;
-      const next = cur + (target - cur) * 0.18;
-      el.scrollLeft = Math.abs(next - cur) < 0.5 ? target : next;
-      if (Math.abs(target - el.scrollLeft) > 0.5) {
-        raf = requestAnimationFrame(step);
-      } else {
-        stopRAF();
-      }
-    };
-
     const onWheel = (e: WheelEvent) => {
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (d === 0) return;
-      if (!raf) target = el.scrollLeft;
-      target += d;
-      const max = el.scrollWidth - el.clientWidth;
-      target = Math.max(0, Math.min(target, max));
-      if (!raf) raf = requestAnimationFrame(step);
       e.preventDefault();
+      el.scrollLeft += d;
     };
     el.addEventListener("wheel", onWheel, { passive: false });
 
-    // --- drag con inercia ---
-    let lastX = 0, lastT = 0, v = 0, rafMom = 0, isDragging = false;
-
-    const stopMomentum = () => { if (rafMom) cancelAnimationFrame(rafMom); rafMom = 0; };
+    let lastX = 0, lastT = 0, v = 0, raf = 0, isDown = false;
+    const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
     const momentum = () => {
       v *= 0.95;
-      if (Math.abs(v) < 0.25) return stopMomentum();
+      if (Math.abs(v) < 0.2) return stop();
       el.scrollLeft -= v;
-      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth) return stopMomentum();
-      rafMom = requestAnimationFrame(momentum);
+      const max = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft <= 0 || el.scrollLeft >= max) return stop();
+      raf = requestAnimationFrame(momentum);
     };
-
-    const down = (x: number) => {
-      isDragging = true;
-      movedRef.current = 0;
-      lastX = x;
-      lastT = performance.now();
-      v = 0;
-      stopMomentum();
-      el.classList.add("cursor-grabbing");
-    };
-
+    const down = (x: number) => { isDown = true; stop(); lastX = x; lastT = performance.now(); v = 0; el.classList.add("cursor-grabbing"); };
     const move = (x: number) => {
-      if (!isDragging) return;
-      const now = performance.now();
-      const dx = x - lastX;
-      const dt = now - lastT || 16.7;
-      el.scrollLeft -= dx;
-      v = dx * (16.7 / dt);
-      lastX = x;
-      lastT = now;
-      movedRef.current += Math.abs(dx);
+      if (!isDown) return;
+      const now = performance.now(); const dx = x - lastX; const dt = now - lastT || 16.7;
+      el.scrollLeft -= dx; v = dx * (16.7 / dt); lastX = x; lastT = now;
     };
+    const up = () => { if (!isDown) return; isDown = false; el.classList.remove("cursor-grabbing"); raf = requestAnimationFrame(momentum); };
 
-    const up = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      el.classList.remove("cursor-grabbing");
-      rafMom = requestAnimationFrame(momentum);
-    };
-
-    // Mouse
     const md = (e: MouseEvent) => { e.preventDefault(); down(e.clientX); };
     const mm = (e: MouseEvent) => move(e.clientX);
     const mu = () => up();
-
-    // Touch
     const ts = (e: TouchEvent) => down(e.touches[0].clientX);
     const tm = (e: TouchEvent) => move(e.touches[0].clientX);
     const te = () => up();
@@ -124,141 +84,141 @@ export default function ServicesSection() {
       el.removeEventListener("touchstart", ts);
       el.removeEventListener("touchmove", tm);
       el.removeEventListener("touchend", te);
-      stopMomentum();
-      stopRAF();
+      stop();
     };
   }, []);
 
-  const handleCardClick = (slug: string) => {
-    if (movedRef.current < 10) navigate(`/servicios/${slug}`);
-  };
-
-  const services = [
-    {
-      id: 1,
-      slug: "diseno-arquitectonico",
-      number: "01",
-      title: "Diseño Arquitectónico",
-      description:
-        "Desarrollamos proyectos arquitectónicos desde la conceptualización hasta el detalle ejecutivo. Cada diseño nace de la empatía y se plasma con claridad, buscando siempre la armonía entre forma, función y alma.",
-      image: "src/assets/servicios/CASA-MAY-2.png",
-    },
-    {
-      id: 2,
-      slug: "construccion-residencial-comercial",
-      number: "02",
-      title: "Construcción Residencial y Comercial",
-      description:
-        "Ejecutamos obras con precisión, orden y compromiso, cuidando tanto la calidad de los materiales como la experiencia del cliente durante el proceso constructivo.",
-      image: "src/assets/servicios/8.png",
-    },
-    {
-      id: 3,
-      slug: "proyectos-integrales",
-      number: "03",
-      title: "Proyectos Integrales",
-      description:
-        "Ofrecemos un acompañamiento completo: desde el anteproyecto hasta la entrega final. Una solución llave en mano para quienes buscan claridad, confianza y resultados a la altura de sus expectativas.",
-      image: "src/assets/servicios/a5.png",
-    },
-  ];
-
-  // ✅ Diseño original
   return (
-    <main ref={sectionRef} className="bg-neutral-50 text-neutral-900 flex justify-center items-center">
-      {/* DESKTOP */}
-      <div
-        ref={scrollerRef}
-        className="hidden md:flex overflow-x-auto overflow-y-hidden w-full h-full select-none cursor-grab no-scrollbar"
-      >
-        <div
-          className="flex justify-start items-start mx-auto"
-          style={{
-            gap: "clamp(2rem, 4vw, 4.5rem)",
-            paddingLeft: "clamp(1.4rem, 7.3vw, 14rem)",
-            paddingRight: "clamp(1.4rem, 7.3vw, 14rem)",
-            minWidth: "fit-content",
-          }}
+    <main ref={sectionRef} className="bg-neutral-50 text-neutral-900 flex flex-col">
+      {/* Volver sin subrayado ni outline */}
+      <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 pt-6 md:pt-10">
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => navigate("/servicios")}
+          className="text-[12px] leading-none text-neutral-400 hover:text-neutral-700 no-underline outline-none focus:outline-none focus:ring-0 active:outline-none"
+          style={{ textDecoration: "none" }}
         >
-          {services.map((s) => (
-            <div
-              key={s.id}
-              onClick={() => handleCardClick(s.slug)}
-              className="flex flex-col cursor-pointer transition-transform duration-300 hover:scale-[1.01]"
-              style={{ width: "clamp(45rem, 30vw, 57.5rem)", flexShrink: 0 }}
-            >
-              <h2
-                className="font-medium"
-                style={{
-                  fontSize: "clamp(1.8rem, 1.9vw, 3.8rem)",
-                  lineHeight: "clamp(2.4rem, 2.4vw, 5rem)",
-                  color: "#A6A6A6",
-                }}
-              >
-                <span>{s.number}</span>{" "}
-                <span className="text-[#0A0A0A]">{s.title}</span>
-              </h2>
-
-              <p
-                className="font-medium text-[#0A0A0A]"
-                style={{
-                  fontSize: "clamp(1.2rem, 1vw, 1.6rem)",
-                  lineHeight: "clamp(1.6rem, 1.4vw, 2.3rem)",
-                  marginTop: "clamp(1rem, 1.5vw, 2rem)",
-                  marginBottom: "clamp(2rem, 2.5vw, 3rem)",
-                  maxWidth: "clamp(40rem, 45vw, 57.5rem)",
-                }}
-              >
-                {s.description}
-              </p>
-
-              <div
-                className="overflow-hidden"
-                style={{
-                  width: "clamp(30rem, 23vw, 44.3rem)",
-                  height: "clamp(20rem, 18vw, 28rem)",
-                }}
-              >
-                <img
-                  src={s.image}
-                  alt={s.title}
-                  className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
-                  draggable={false}
-                  loading="lazy"
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+          ← Volver
+        </button>
       </div>
 
-      {/* MOBILE */}
-      <div className="md:hidden w-full px-6 py-8 sm:py-12 space-y-12">
-        {services.map((s) => (
+      {/* Contenido principal con scroll horizontal */}
+      <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 pt-4 md:pt-6">
+        <div
+          ref={scrollerRef}
+          className="no-scrollbar overflow-x-auto overflow-y-hidden select-none cursor-grab"
+          style={{ touchAction: "pan-y" }}
+        >
           <div
-            key={s.id}
-            onClick={() => navigate(`/servicios/${s.slug}`)}
-            className="flex flex-col gap-4 cursor-pointer"
+            className="grid items-start gap-x-6 lg:gap-x-10 gap-y-6 pr-1"
+            style={{
+              minWidth: "1720px",
+              gridTemplateColumns: "320px 820px 560px", // texto | grande | columna derecha
+              paddingTop: "clamp(8px, 2.2vw, 22px)",
+              paddingBottom: "clamp(12px, 3vw, 28px)",
+              margin: "0 auto",
+            }}
           >
-            <h2 className="font-medium text-[1.8rem] text-[#0A0A0A] leading-tight">
-              <span className="text-[#A6A6A6]">{s.number}</span>{" "}
-              <span>{s.title}</span>
-            </h2>
-            <p className="text-[#0A0A0A] font-medium text-[1.4rem] leading-relaxed">
-              {s.description}
-            </p>
-            <div className="overflow-hidden">
+            {/* Texto */}
+            <div className="justify-self-start text-right">
+              <div className="text-[#A6A6A6] font-medium text-[clamp(18px,2.1vw,28px)] leading-none mb-1">01</div>
+              <h2 className="font-medium text-[#0A0A0A] leading-[1.05]">
+                <span className="block text-[clamp(22px,2.4vw,36px)]">Diseño</span>
+                <span className="block text-[clamp(22px,2.4vw,36px)]">Arquitectónico</span>
+              </h2>
+              <p
+                className="font-medium text-[#0A0A0A] mt-3"
+                style={{
+                  fontSize: "clamp(12px,1.05vw,16px)",
+                  lineHeight: "clamp(16px,1.5vw,22px)",
+                  maxWidth: "min(320px,24vw)",
+                  marginLeft: "auto",
+                }}
+              >
+                Desarrollamos proyectos arquitectónicos desde la conceptualización
+                hasta el detalle ejecutivo. Cada diseño nace de la empatía y se
+                plasma con claridad, buscando siempre la armonía entre forma, función y alma.
+              </p>
+            </div>
+
+            {/* Imagen principal SIN altura fija (solo ratio) */}
+            <div
+              className="relative group overflow-hidden select-none"
+              style={{ aspectRatio: "16 / 10" }}
+              data-cursor="drag"
+              data-cursor-size="92"
+              data-cursor-label="Arrastra"
+            >
               <img
-                src={s.image}
-                alt={s.title}
-                className="object-cover w-full h-auto transition-transform duration-300 hover:scale-105"
+                src={ImgMain}
+                alt="principal"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] will-change-transform"
                 draggable={false}
                 loading="lazy"
+                decoding="async"
               />
             </div>
+
+            {/* Columna derecha SIN altura fija; cada tarjeta define su ratio */}
+            <div className="grid gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="overflow-hidden" style={{ aspectRatio: "16 / 10" }}>
+                  <img
+                    src={ImgTopRight}
+                    alt="arriba"
+                    className="w-full h-full object-cover select-none"
+                    draggable={false}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <div className="overflow-hidden" style={{ aspectRatio: "16 / 10" }}>
+                  <img
+                    src={ImgMidRight}
+                    alt="medio"
+                    className="w-full h-full object-cover select-none"
+                    draggable={false}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              </div>
+
+              {/* Inferior ancha: completa y nítida */}
+              <div className="overflow-hidden" style={{ aspectRatio: "32 / 10" }}>
+                <WideContain src={ImgWideRight} alt="ancha" />
+              </div>
+            </div>
           </div>
-        ))}
+        </div>
       </div>
     </main>
+  );
+}
+
+/* Muestra la imagen completa respetando su ratio natural (evita pixelación) */
+function WideContain({ src, alt }: { src: string; alt: string }) {
+  const [ratio, setRatio] = useState<number | null>(null);
+
+  const onLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      setRatio(img.naturalWidth / img.naturalHeight);
+    }
+  };
+
+  return (
+    <div className="w-full h-full bg-[#F2F2F2] overflow-hidden">
+      <img
+        src={src}
+        alt={alt}
+        onLoad={onLoad}
+        className="w-full h-full object-contain select-none"
+        draggable={false}
+        loading="lazy"
+        decoding="async"
+        style={{ imageRendering: "auto", aspectRatio: ratio ? `${ratio} / 1` : undefined }}
+      />
+    </div>
   );
 }
