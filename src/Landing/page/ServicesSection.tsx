@@ -58,8 +58,7 @@ export default function ServicesSection() {
     el.addEventListener("wheel", onWheel, { passive: false });
 
     // Drag + inercia
-    let startX = 0,
-      lastX = 0,
+    let lastX = 0,
       lastT = 0,
       v = 0,
       rafMom = 0,
@@ -81,7 +80,6 @@ export default function ServicesSection() {
     const down = (x: number) => {
       isDragging = true;
       movedRef.current = 0;
-      startX = x;
       lastX = x;
       lastT = performance.now();
       v = 0;
