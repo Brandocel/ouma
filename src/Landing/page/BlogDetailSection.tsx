@@ -298,7 +298,6 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
     if (!el) return;
 
     let lastX = 0,
-    let lastX = 0,
       lastT = 0,
       v = 0,
       rafMom = 0;
