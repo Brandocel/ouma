@@ -297,8 +297,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
     const el = wrapRef.current;
     if (!el) return;
 
-    let startX = 0,
-      lastX = 0,
+    let lastX = 0,
       lastT = 0,
       v = 0,
       rafMom = 0;
@@ -326,8 +325,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       stopMomentum();
       el.setPointerCapture(e.pointerId);
-      startX = e.clientX;
-      lastX = startX;
+      lastX = e.clientX;
       lastT = performance.now();
       v = 0;
       el.classList.add("cursor-grabbing");

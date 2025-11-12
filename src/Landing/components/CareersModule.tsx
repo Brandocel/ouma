@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import CareersSvg from "../../assets/Icons/Carrers/Recurso 12 1.svg";
 import InteractiveSvg from "../../common/svg/InteractiveSvg";
 
 /* ========= Floating Fields ========= */

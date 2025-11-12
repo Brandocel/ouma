@@ -23,6 +23,9 @@ type Props = {
   startPainted?: boolean;
   eraseThenDrawOnHover?: boolean;
 
+  // Solo una vez
+  playOnce?: boolean; // ← NUEVO: por defecto true
+
   // Pincel (reveal)
   brushWidthMultiplier?: number;
 
@@ -69,6 +72,8 @@ export default function InteractiveSvg({
   startPainted = false,
   eraseThenDrawOnHover = false,
 
+  playOnce = true, // ← por defecto: una sola vez
+
   brushWidthMultiplier = 0.08,
 
   bgImageUrl,
@@ -94,6 +99,9 @@ export default function InteractiveSvg({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const zoomWrapRef = useRef<SVGGElement | null>(null);
   const [readyTick, setReadyTick] = useState(0);
+
+  // Estado “solo una vez”
+  const hasPlayedRef = useRef(false);
 
   // ---------- Helpers de SVG ----------
   const ensureDefs = (root: SVGSVGElement) => {
@@ -128,8 +136,7 @@ export default function InteractiveSvg({
     if (tag === "ellipse") {
       const rx = parseFloat(n.getAttribute("rx") || "0");
       const ry = parseFloat(n.getAttribute("ry") || "0");
-      const a = rx,
-        b = ry;
+      const a = rx, b = ry;
       const h = ((a - b) ** 2) / ((a + b) ** 2);
       return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
     }
@@ -263,7 +270,6 @@ export default function InteractiveSvg({
       // Fondo <image> que llena el SVG
       if (bgImageUrl) {
         const img = document.createElementNS(ns, "image");
-        // Usa href estándar (xlink está deprecado, pero mantenemos compat)
         (img as any).setAttributeNS(
           "http://www.w3.org/1999/xlink",
           "href",
@@ -408,7 +414,6 @@ export default function InteractiveSvg({
       const mask = document.createElementNS(ns, "mask");
       const id = `msk_${Math.random().toString(36).slice(2)}_${i}`;
       mask.setAttribute("id", id);
-      // Muy importante para coords absolutas:
       mask.setAttribute("maskContentUnits", "userSpaceOnUse");
       mask.setAttribute("maskUnits", "userSpaceOnUse");
 
@@ -449,7 +454,20 @@ export default function InteractiveSvg({
       (n as any).__revealStroke = strokePath;
     });
 
+    // —— helpers de reproducción y reseteo ——
+    const setAllPainted = () => {
+      geom.forEach((n) => {
+        const sp = (n as any).__revealStroke as SVGGraphicsElement | undefined;
+        if (!sp) return;
+        sp.style.transition = "none";
+        sp.style.strokeDashoffset = "0";
+      });
+    };
+
     const play = () => {
+      // si ya se reprodujo y solo-una-vez, no repitas
+      if (playOnce && hasPlayedRef.current) return;
+
       requestAnimationFrame(() =>
         geom.forEach((n, i) => {
           const sp = (n as any).__revealStroke as SVGGraphicsElement | undefined;
@@ -459,9 +477,17 @@ export default function InteractiveSvg({
         })
       );
       void playZoomOut();
+
+      if (playOnce) {
+        hasPlayedRef.current = true;
+        // Fija el estado pintado y no vuelvas a resetear
+        setTimeout(setAllPainted, (drawDurationMs || 0) + (geom.length - 1) * (drawStaggerMs || 0) + 30);
+        detachHover(); // quita listeners para no repetir
+      }
     };
 
     const eraseThenDraw = () => {
+      if (playOnce && hasPlayedRef.current) return;
       geom.forEach((n) => {
         const sp = (n as any).__revealStroke as SVGGraphicsElement | undefined;
         if (!sp) return;
@@ -475,6 +501,7 @@ export default function InteractiveSvg({
     };
 
     const resetToInitial = () => {
+      if (playOnce && hasPlayedRef.current) return; // no resetees si ya jugó una vez
       geom.forEach((n, i) => {
         const sp = (n as any).__revealStroke as SVGGraphicsElement | undefined;
         if (!sp) return;
@@ -487,6 +514,7 @@ export default function InteractiveSvg({
 
     const onEnter = () => (eraseThenDrawOnHover ? eraseThenDraw() : play());
     const onLeave = () => {
+      if (playOnce && hasPlayedRef.current) return; // no hagas nada después
       if (eraseThenDrawOnHover) {
         geom.forEach((n) => {
           const sp = (n as any).__revealStroke as SVGGraphicsElement | undefined;
@@ -497,23 +525,31 @@ export default function InteractiveSvg({
       }
     };
 
-    if (drawOnHover) {
+    // Adjuntar / Desadjuntar hover
+    const attachHover = () => {
+      if (!drawOnHover) return;
       root.addEventListener("mouseenter", onEnter);
       root.addEventListener("mouseleave", onLeave);
       root.addEventListener("touchstart", onEnter, { passive: true });
       root.addEventListener("touchend", onLeave);
+    };
+    const detachHover = () => {
+      root.removeEventListener("mouseenter", onEnter);
+      root.removeEventListener("mouseleave", onLeave);
+      root.removeEventListener("touchstart", onEnter as any);
+      root.removeEventListener("touchend", onLeave as any);
+    };
+
+    attachHover();
+
+    // Auto-play al montar (respeta playOnce)
+    if (autoPlayOnMount) {
+      if (eraseThenDrawOnHover) eraseThenDraw();
+      else play();
     }
 
-    if (autoPlayOnMount && !startPainted) play();
-    if (autoPlayOnMount && startPainted && eraseThenDrawOnHover) eraseThenDraw();
-
     return () => {
-      if (drawOnHover) {
-        root.removeEventListener("mouseenter", onEnter);
-        root.removeEventListener("mouseleave", onLeave);
-        root.removeEventListener("touchstart", onEnter as any);
-        root.removeEventListener("touchend", onLeave as any);
-      }
+      detachHover();
       masks.forEach((m) => m.remove());
       geom.forEach((n) => n.removeAttribute("mask"));
     };
@@ -528,6 +564,7 @@ export default function InteractiveSvg({
     autoPlayOnMount,
     startPainted,
     eraseThenDrawOnHover,
+    playOnce, // ← dependemos de esto
     brushWidthMultiplier,
     zoomOutOnReveal,
     zoomFrom,
@@ -551,10 +588,7 @@ export default function InteractiveSvg({
     if (!groups.length) return;
 
     let rect = wrap.getBoundingClientRect();
-    let raf = 0,
-      mx = 0,
-      my = 0,
-      dirty = false;
+    let raf = 0, mx = 0, my = 0, dirty = false;
 
     const tick = () => {
       raf = 0;
