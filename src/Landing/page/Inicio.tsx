@@ -1,8 +1,7 @@
-// src/Landing/page/Inicio.tsx
-import { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
-/** Carga de imágenes desde /assets/FotosInicio */
+/** Carga de imágenes: usamos SIEMPRE la versión Grande si existe */
 const imgs = import.meta.glob("../../assets/FotosInicio/*.{png,jpg,jpeg}", {
   eager: true,
   query: "?url",
@@ -24,51 +23,67 @@ const ORDER = [
   "11 danubio lateral 1.png",
 ];
 
+type Rect = { top: number; left: number; width: number; height: number };
+
+const fn = (p: string) => {
+  const last = p.split("/").pop() || "";
+  try { return decodeURIComponent(last); } catch { return last; }
+};
+const toGrandeIfExists = (filename: string) => {
+  const m = filename.match(/^(.*)\.([^.]+)$/);
+  const base = m ? m[1] : filename.replace(/\.[^.]+$/, "");
+  const ext  = m ? m[2] : (filename.split(".").pop() ?? "png");
+  const grandeName = `${base}Grande.${ext}`;
+  const hitGrande = Object.entries(imgs).find(([p]) => p.endsWith("/" + grandeName));
+  if (hitGrande) return hitGrande[1].default;
+  const hit = Object.entries(imgs).find(([p]) => p.endsWith("/" + filename));
+  return hit?.[1]?.default ?? "";
+};
+const sharedKeyOf = (anyFilename: string) =>
+  fn(anyFilename).toLowerCase().replace(/(?:[_\-\s]?grande)(?=\.[^.]+$)/i, "");
+
 const slugify = (s: string) =>
-  s.toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+   .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
 export default function Inicio() {
   const navigate = useNavigate();
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const movedRef = useRef(0);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
 
-  // 👉 Calcula dinámicamente las alturas de header y footer para que
-  // la sección SIEMPRE ocupe exactamente el alto visible disponible.
+  // estado de gesto
+  const draggingRef = useRef(false);
+  const movedRef = useRef(0);
+  const startXRef = useRef(0);
+  const startTimeRef = useRef(0);
+
+  // alturas dinámicas
   useEffect(() => {
     const root = document.documentElement;
     const header = document.querySelector("header") as HTMLElement | null;
     const footer = document.querySelector("footer") as HTMLElement | null;
-
-    const applyVars = () => {
+    const apply = () => {
       const hH = header?.getBoundingClientRect().height ?? 0;
       const fH = footer?.getBoundingClientRect().height ?? 0;
       root.style.setProperty("--header-h", `${Math.round(hH)}px`);
       root.style.setProperty("--footer-h", `${Math.round(fH)}px`);
     };
-
-    applyVars();
-
-    const ro = new ResizeObserver(applyVars);
+    apply();
+    const ro = new ResizeObserver(apply);
     header && ro.observe(header);
     footer && ro.observe(footer);
-    window.addEventListener("resize", applyVars);
-
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", applyVars);
-    };
+    window.addEventListener("resize", apply);
+    return () => { ro.disconnect(); window.removeEventListener("resize", apply); };
   }, []);
 
   const items = useMemo(() => {
-    const raw = Object.entries(imgs).map(([path, mod]) => {
-      const file = path.split("/").pop() || "";
-      const meta = metaByFile[file] ?? { title: file.replace(/\.(png|jpg|jpeg)$/i, ""), place: "—" };
-      const src = (mod as any).default as string;
+    const raw = Object.entries(imgs).map(([path]) => {
+      const original = fn(path);
+      const baseKey = sharedKeyOf(original);
+      const grandeSrc = toGrandeIfExists(original);
+      const meta = metaByFile[original] ?? { title: original.replace(/\.(png|jpg|jpeg)$/i, ""), place: "—" };
       const slug = slugify(meta.title);
-      return { src, file, slug, ...meta };
+      return { file: original, src: grandeSrc, slug, key: baseKey, ...meta };
     });
     const pos = (f: string) => {
       const i = ORDER.indexOf(f);
@@ -77,139 +92,235 @@ export default function Inicio() {
     return raw.sort((a, b) => (pos(a.file) - pos(b.file)) || a.file.localeCompare(b.file));
   }, []);
 
+  // --- util para placeholder (transición “back”)
+  function makePlaceholder(r: Rect) {
+    const ph = document.createElement("div");
+    ph.setAttribute("data-shared-placeholder", "1");
+    Object.assign(ph.style, {
+      position: "absolute",
+      top: `${r.top}px`,
+      left: `${r.left}px`,
+      width: `${r.width}px`,
+      height: `${r.height}px`,
+      background: "#fff",
+      borderRadius: "6px",
+      zIndex: "9998",
+      pointerEvents: "none",
+    } as CSSStyleDeclaration);
+    document.body.appendChild(ph);
+    return ph;
+  }
+
+  // Boot “back” transición compartida
+  useLayoutEffect(() => {
+    const pending = (window as any).__sharedImagePending as
+      | { src: string; from: Rect; objectFit?: string; direction?: "back"; sharedKey?: string }
+      | undefined;
+
+    if (!pending || pending.direction !== "back") return;
+
+    const tryBoot = () => {
+      if (!pending.sharedKey) return false;
+      const match = document.querySelector(
+        `img[data-shared-key="${pending.sharedKey}"]`
+      ) as HTMLImageElement | null;
+      if (!match) return false;
+
+      match.style.visibility = "hidden";
+
+      const r = match.getBoundingClientRect();
+      const to: Rect = {
+        top: r.top + window.scrollY,
+        left: r.left + window.scrollX,
+        width: r.width,
+        height: r.height,
+      };
+
+      const ph = makePlaceholder(to);
+
+      const onDone = () => {
+        window.removeEventListener("shared-image-done", onDone as any);
+        try { ph.remove(); } catch {}
+        match.style.visibility = "visible";
+        (window as any).__sharedImagePending = undefined;
+      };
+      window.addEventListener("shared-image-done", onDone as any, { once: true });
+
+      window.dispatchEvent(new CustomEvent("shared-image-start", { detail: pending }));
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent("shared-image-animate", { detail: { to } }));
+      });
+
+      return true;
+    };
+
+    if (tryBoot()) return;
+    let attempts = 0;
+    const id = window.setInterval(() => { attempts++; if (tryBoot() || attempts > 10) window.clearInterval(id); }, 16);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // ===== Scroll: rueda + drag con snap dinámico + TAP SINTÉTICO =====
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
 
+    const originalSnap = getComputedStyle(el).scrollSnapType || "x proximity";
+    let snapIdle: number | null = null;
+    const setSnap = (v: string) => ((el.style as any).scrollSnapType = v);
+    const armIdle = (ms = 220) => { if (snapIdle) window.clearTimeout(snapIdle); snapIdle = window.setTimeout(() => setSnap(originalSnap), ms); };
+
+    // Rueda fluida
+    let raf = 0;
+    let target = 0;
+    const stopRAF = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
+    const step = () => {
+      const cur = el.scrollLeft;
+      const next = cur + (target - cur) * 0.18;
+      el.scrollLeft = Math.abs(next - cur) < 0.5 ? target : next;
+      if (Math.abs(target - el.scrollLeft) > 0.5) raf = requestAnimationFrame(step);
+      else { stopRAF(); armIdle(180); }
+    };
+
     const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) e.preventDefault();
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (d === 0) return;
+      const before = el.scrollLeft;
+
+      setSnap("none");
+      if (!raf) target = el.scrollLeft;
+      target += d;
+      const max = el.scrollWidth - el.clientWidth;
+      if (target < 0) target = 0;
+      if (target > max) target = max;
+      if (!raf) raf = requestAnimationFrame(step);
+
+      if (el.scrollLeft !== before) e.preventDefault();
     };
     el.addEventListener("wheel", onWheel, { passive: false });
 
-    // Drag + inercia
-    let isDragging = false;
-    let startX = 0;
-    let startScrollLeft = 0;
-
-    let velocity = 0;
-    let lastX = 0;
-    let lastT = 0;
-    let rafId = 0;
-
-    let startY = 0;
-
-    const originalSnap = getComputedStyle(el).scrollSnapType || "x proximity";
-    const setSnap = (v: string) => ((el.style as any).scrollSnapType = v);
-    const getX = (clientX: number) => clientX - el.getBoundingClientRect().left;
-
-    const stopMomentum = () => { if (rafId) cancelAnimationFrame(rafId); rafId = 0; };
+    // Drag + inercia + TAP sintético
+    let startX = 0, lastX = 0, lastT = 0, v = 0, rafMom = 0;
+    const stopMomentum = () => { if (rafMom) cancelAnimationFrame(rafMom); rafMom = 0; };
     const momentum = () => {
-      velocity *= 0.95;
-      if (Math.abs(velocity) < 0.2) {
-        stopMomentum(); setSnap(originalSnap); el.classList.remove("cursor-grabbing"); return;
-      }
-      el.scrollLeft -= velocity;
-      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth) {
-        stopMomentum(); setSnap(originalSnap); el.classList.remove("cursor-grabbing"); return;
-      }
-      rafId = requestAnimationFrame(momentum);
+      v *= 0.95;
+      if (Math.abs(v) < 0.25) { stopMomentum(); armIdle(120); return; }
+      el.scrollLeft -= v;
+      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth) { stopMomentum(); armIdle(120); return; }
+      rafMom = requestAnimationFrame(momentum);
     };
 
-    const onDown = (clientX: number) => {
-      isDragging = true;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      draggingRef.current = true;
       movedRef.current = 0;
-      startX = getX(clientX);
-      startScrollLeft = el.scrollLeft;
+      startXRef.current = e.clientX;
+      startTimeRef.current = performance.now();
+
+      setSnap("none");
+      stopMomentum(); stopRAF();
+      el.setPointerCapture(e.pointerId);
+
+      startX = e.clientX;
       lastX = startX;
       lastT = performance.now();
-      velocity = 0;
-      stopMomentum();
-      setSnap("none");
-      el.classList.add("cursor-grabbing");
+      v = 0;
       (document.activeElement as HTMLElement)?.blur?.();
     };
 
-    const onMove = (clientX: number) => {
-      if (!isDragging) return;
-      const x = getX(clientX);
+    const onPointerMove = (e: PointerEvent) => {
+      if (!draggingRef.current) return;
       const now = performance.now();
-      const dx = x - lastX;
+      const dx = e.clientX - lastX;
       const dt = now - lastT || 16.7;
 
-      el.scrollLeft = startScrollLeft - (x - startX);
-      velocity = dx * (16.7 / dt);
-      lastX = x; lastT = now;
+      // Mueve el scroll acorde al arrastre
+      el.scrollLeft -= dx;
+
+      v = dx * (16.7 / dt);
+      lastX = e.clientX; lastT = now;
+
       movedRef.current += Math.abs(dx);
     };
 
-    const onUp = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      rafId = requestAnimationFrame(momentum);
-    };
+    const onPointerUp = (e: PointerEvent) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      try { el.releasePointerCapture(e.pointerId); } catch {}
 
-    // Mouse
-    const md = (e: MouseEvent) => { e.preventDefault(); onDown(e.clientX); };
-    const mm = (e: MouseEvent) => { e.preventDefault(); onMove(e.clientX); };
-    const mu = () => onUp();
+      const totalMoved = Math.abs(e.clientX - startXRef.current);
+      const elapsed = performance.now() - startTimeRef.current;
 
-    // Touch
-    const ts = (e: TouchEvent) => {
-      if (!e.touches[0]) return;
-      startY = e.touches[0].clientY;
-      onDown(e.touches[0].clientX);
-    };
-    const tm = (e: TouchEvent) => {
-      if (!e.touches[0]) return;
-      const dy = Math.abs(e.touches[0].clientY - startY);
-      const dx = Math.abs(getX(e.touches[0].clientX) - startX);
-      if (dx > dy) {
-        e.preventDefault();
-        onMove(e.touches[0].clientX);
-      } else {
-        isDragging = false;
-        setSnap(originalSnap);
-        el.classList.remove("cursor-grabbing");
+      // Si NO se arrastró (tap) => navegar al detalle del item bajo el dedo
+      if (totalMoved <= 10 && elapsed <= 250) {
+        // encuentra el elemento bajo el puntero
+        const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+        const card = hit?.closest?.("article[role='button']") as HTMLElement | null;
+        if (card) {
+          const imgEl = card.querySelector("img") as HTMLImageElement | null;
+          // disparo evento de detalle (mismo que en onClick)
+          if (imgEl) {
+            const r = imgEl.getBoundingClientRect();
+            const from = { top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height };
+            const objectFit = getComputedStyle(imgEl).objectFit || "cover";
+            window.dispatchEvent(new CustomEvent("shared-image-start", {
+              detail: { src: imgEl.src, from, objectFit, direction: "forward" }
+            }));
+          }
+          // navega usando el slug en data-attr
+          const slug = card.getAttribute("data-slug");
+          if (slug) navigate(`/proyectos/${slug}`);
+          return; // no lances inercia si fue tap
+        }
       }
+
+      // si sí hubo arrastre: aplica inercia
+      rafMom = requestAnimationFrame(momentum);
     };
-    const te = () => onUp();
 
-    el.addEventListener("mousedown", md);
-    window.addEventListener("mousemove", mm, { passive: false });
-    window.addEventListener("mouseup", mu);
-
-    el.addEventListener("touchstart", ts, { passive: false });
-    el.addEventListener("touchmove", tm, { passive: false });
-    el.addEventListener("touchend", te);
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("pointercancel", onPointerUp);
+    el.addEventListener("lostpointercapture", onPointerUp);
 
     return () => {
       el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("mousedown", md);
-      window.removeEventListener("mousemove", mm as any);
-      window.removeEventListener("mouseup", mu);
-      el.removeEventListener("touchstart", ts);
-      el.removeEventListener("touchmove", tm);
-      el.removeEventListener("touchend", te);
-      stopMomentum(); setSnap(originalSnap);
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("pointercancel", onPointerUp);
+      el.removeEventListener("lostpointercapture", onPointerUp);
+      stopMomentum(); stopRAF(); setSnap(originalSnap);
     };
-  }, []);
+  }, [navigate]);
 
-  const handleCardClick = (slug: string) => {
-    if (movedRef.current < 10) navigate(`/proyectos/${slug}`);
-  };
+  // Navegación a detalle (también la usa el fallback por teclado)
+  const goDetail = useCallback((slug: string, imgEl?: HTMLImageElement | null) => {
+    if (!imgEl) { navigate(`/proyectos/${slug}`); return; }
+    const r = imgEl.getBoundingClientRect();
+    const from = { top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height };
+    const objectFit = getComputedStyle(imgEl).objectFit || "cover";
+    window.dispatchEvent(new CustomEvent("shared-image-start", {
+      detail: { src: imgEl.src, from, objectFit, direction: "forward" }
+    }));
+    navigate(`/proyectos/${slug}`);
+  }, [navigate]);
+
+  const handleCardClick = useCallback(
+    (slug: string, ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
+      // si hubo arrastre, ignora
+      if (draggingRef.current || movedRef.current > 18) return;
+      const articleEl = ev?.currentTarget as HTMLElement | null;
+      const imgEl = articleEl?.querySelector("img") as HTMLImageElement | null;
+      goDetail(slug, imgEl);
+    },
+    [goDetail]
+  );
 
   return (
-    /**
-     * Ocupa exactamente el alto visible disponible:
-     *   min-h = 100svh - header - footer  (dinámicos)
-     *   max-h = lo mismo, para que NUNCA crezca más alto que la pantalla
-     *   flex-1/min-h-0 para cooperar con el <main class="flex-1"> del layout
-     */
     <section
-      className="
-        mx-auto w-full max-w-[1440px] px-2 md:px-3 pt-8 md:pt-40
-        flex-1 min-h-0 flex flex-col
-      "
+      className="mx-auto w-full max-w-[1440px] px-2 md:px-3 pt-8 md:pt-40 flex-1 min-h-0 flex flex-col"
       style={{
         minHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
         maxHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
@@ -217,48 +328,46 @@ export default function Inicio() {
     >
       <div
         ref={scrollerRef}
-        className="
-          no-scrollbar overflow-x-auto overflow-y-hidden
-          snap-x snap-proximity
-          cursor-grab select-none
-          touch-pan-y
-          overscroll-x-contain
-          flex-1
-          min-h-0
-        "
+        className="no-scrollbar overflow-x-auto overflow-y-hidden snap-x snap-proximity cursor-grab select-none overscroll-x-contain flex-1 min-h-0"
+        style={{ touchAction: "pan-y" }}
+        data-cursor="drag"
+        data-cursor-label="Arrastra"
       >
-        <div className="flex gap-6 pr-0">
+        {/* w-max conserva layout; 4 col en xl con width fija ~320px */}
+        <div ref={innerRef} className="flex w-max gap-6 pr-0">
           {items.map((it) => (
             <article
               key={it.file}
+              data-slug={it.slug}
               className="
                 snap-start shrink-0
-                basis-[90%] sm:basis-1/2 lg:basis-1/3 xl:basis-1/4
-                max-w-[560px]
+                w-[85vw] sm:w-[48vw] lg:w-[340px] xl:w-[320px] max-w-[360px]
               "
-              data-cursor="drag"
-              data-cursor-label="Arrastra"
-              onClick={() => handleCardClick(it.slug)}
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCardClick(it.slug); }}
+              onClick={(e) => handleCardClick(it.slug, e)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") handleCardClick(it.slug, e);
+              }}
             >
-              <div className="aspect-[4/3] overflow-hidden">
+              <div
+                className="aspect-[4/3] overflow-hidden"
+                data-cursor="drag"
+                data-cursor-label="Arrastra"
+              >
                 <img
                   src={it.src}
                   alt={it.title}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain-sm object-center transition-transform duration-300 ease-in-out hover:scale-[1.03]"
                   draggable={false}
+                  onDragStart={(e) => e.preventDefault()}
+                  data-shared-key={it.key}
                 />
               </div>
 
               <div className="pt-3">
-                <h3 className="font-medium text-neutral-900 text-[17px] leading-[1.25]">
-                  {it.title}
-                </h3>
-                <p className="font-medium text-neutral-500 text-[11px] tracking-wide">
-                  {it.place}
-                </p>
+                <h3 className="font-medium text-neutral-900 text-[17px] leading-[1.25]">{it.title}</h3>
+                <p className="font-medium text-neutral-500 text-[11px] tracking-wide">{it.place}</p>
               </div>
             </article>
           ))}

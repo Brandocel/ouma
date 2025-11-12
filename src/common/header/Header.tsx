@@ -1,4 +1,3 @@
-// src/common/header/Header.tsx
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import Logo from "../../assets/logo.svg";
@@ -20,6 +19,88 @@ const MENU = [
   { label: "CONTACTO", to: "/contacto" },
 ];
 
+/** Barra de categorías con animación de aparición (se monta solo cuando show=true) */
+function CatsBar({ path }: { path: string }) {
+  const [inView, setInView] = useState(false);
+  // re-dispara animación cuando cambia la ruta (al volver a una pantalla con CATS)
+  useEffect(() => {
+    // arranca oculto y anima en el siguiente frame
+    setInView(false);
+    const id = requestAnimationFrame(() => setInView(true));
+    return () => cancelAnimationFrame(id);
+  }, [path]);
+
+  const baseContainer =
+    "mt-4 flex justify-center will-change-transform transition-[opacity,transform] duration-400 ease-out";
+  return (
+    <div className={`${baseContainer} ${inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+      {/* Desktop */}
+      <nav className="hidden md:flex items-center gap-8 text-[12px] uppercase">
+        {CATS.map((cat, idx) => (
+          <NavLink
+            key={cat.label + "-desk"}
+            to={cat.to}
+            data-cursor="link"
+            className={({ isActive }) =>
+              [
+                "transition-colors",
+                inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1",
+                "will-change-transform transition-[opacity,transform] duration-300 ease-out",
+                isActive ? "font-semibold text-neutral-900" : "text-neutral-400 hover:text-neutral-700",
+              ].join(" ")
+            }
+            style={{ transitionDelay: inView ? `${idx * 35}ms` : "0ms" }}
+          >
+            {cat.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Mobile (dos filas) */}
+      <nav className="md:hidden flex flex-col items-center gap-1 text-[10px] uppercase">
+        <div className="flex gap-3">
+          {CATS.slice(0, 3).map((cat, idx) => (
+            <NavLink
+              key={cat.label + "-m1"}
+              to={cat.to}
+              data-cursor="link"
+              className={({ isActive }) =>
+                [
+                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1",
+                  "transition-[opacity,transform,color] duration-300 ease-out",
+                  isActive ? "font-semibold text-neutral-900" : "text-neutral-400 hover:text-neutral-700",
+                ].join(" ")
+              }
+              style={{ transitionDelay: inView ? `${idx * 35}ms` : "0ms" }}
+            >
+              {cat.label}
+            </NavLink>
+          ))}
+        </div>
+        <div className="flex gap-3">
+          {CATS.slice(3).map((cat, idx) => (
+            <NavLink
+              key={cat.label + "-m2"}
+              to={cat.to}
+              data-cursor="link"
+              className={({ isActive }) =>
+                [
+                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1",
+                  "transition-[opacity,transform,color] duration-300 ease-out",
+                  isActive ? "font-semibold text-neutral-900" : "text-neutral-400 hover:text-neutral-700",
+                ].join(" ")
+              }
+              style={{ transitionDelay: inView ? `${(idx + 3) * 35}ms` : "0ms" }}
+            >
+              {cat.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
+    </div>
+  );
+}
+
 export default function Header() {
   const [openMenu, setOpenMenu] = useState(false);
   const location = useLocation();
@@ -32,6 +113,7 @@ export default function Header() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // CATS solo en sus rutas
   const showCategories = CATS.some((cat) => location.pathname === cat.to);
 
   return (
@@ -41,7 +123,7 @@ export default function Header() {
         <div className="py-6 min-h-[130px]">
           {/* columnas SIMÉTRICAS: 240 | 1fr | 240 */}
           <div className="grid grid-cols-[140px_1fr_140px] md:grid-cols-[240px_1fr_240px] items-center">
-            {/* IZQUIERDA (misma altura que las otras) */}
+            {/* IZQUIERDA */}
             <div className="h-9 flex items-center">
               <div className="relative">
                 <button
@@ -74,7 +156,7 @@ export default function Header() {
                   />
                 </button>
 
-                {/* Popover (posicionado sin empujar layout) */}
+                {/* Popover */}
                 <ul
                   ref={popRef}
                   className={[
@@ -111,7 +193,7 @@ export default function Header() {
               </div>
             </div>
 
-            {/* CENTRO (logo perfectamente centrado) */}
+            {/* CENTRO (logo) */}
             <div className="h-9 flex items-center justify-center" id="header-logo-slot">
               <img
                 src={Logo}
@@ -121,7 +203,7 @@ export default function Header() {
               />
             </div>
 
-            {/* DERECHA (mismo ancho que izquierda, alineado al borde) */}
+            {/* DERECHA */}
             <div className="h-9 flex items-center justify-end">
               <div className="flex w-full max-w-[240px] items-center gap-2">
                 <input
@@ -146,63 +228,8 @@ export default function Header() {
             </div>
           </div>
 
-          {/* CATEGORÍAS bajo el header (si aplica) */}
-          {showCategories && (
-            <div className="mt-4 flex justify-center">
-              <nav className="hidden md:flex items-center gap-8 text-[12px] uppercase">
-                {CATS.map((cat) => (
-                  <NavLink
-                    key={cat.label}
-                    to={cat.to}
-                    data-cursor="link"
-                    className={({ isActive }) =>
-                      isActive
-                        ? "font-semibold text-neutral-900"
-                        : "text-neutral-400 hover:text-neutral-700"
-                    }
-                  >
-                    {cat.label}
-                  </NavLink>
-                ))}
-              </nav>
-
-              {/* Mobile */}
-              <nav className="md:hidden flex flex-col items-center gap-1 text-[10px] uppercase">
-                <div className="flex gap-3">
-                  {CATS.slice(0, 3).map((cat) => (
-                    <NavLink
-                      key={cat.label}
-                      to={cat.to}
-                      data-cursor="link"
-                      className={({ isActive }) =>
-                        isActive
-                          ? "font-semibold text-neutral-900"
-                          : "text-neutral-400 hover:text-neutral-700"
-                      }
-                    >
-                      {cat.label}
-                    </NavLink>
-                  ))}
-                </div>
-                <div className="flex gap-3">
-                  {CATS.slice(3).map((cat) => (
-                    <NavLink
-                      key={cat.label}
-                      to={cat.to}
-                      data-cursor="link"
-                      className={({ isActive }) =>
-                        isActive
-                          ? "font-semibold text-neutral-900"
-                          : "text-neutral-400 hover:text-neutral-700"
-                      }
-                    >
-                      {cat.label}
-                    </NavLink>
-                  ))}
-                </div>
-              </nav>
-            </div>
-          )}
+          {/* CATEGORÍAS solo en rutas de CATS, con animación al (re)aparecer */}
+          {showCategories && <CatsBar path={location.pathname} />}
         </div>
       </div>
     </header>

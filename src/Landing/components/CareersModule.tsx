@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import CareersSvg from "../../assets/Icons/Carrers/Recurso 12 1.svg";
+import InteractiveSvg from "../../common/svg/InteractiveSvg";
 
 /* ========= Floating Fields ========= */
 function FloatingInput({
@@ -319,19 +320,43 @@ export default function CareersModule() {
               <div className="grid md:grid-cols-[1fr_1fr] gap-8 md:gap-12 items-start py-12 md:py-16">
                 {/* Arte fijo */}
                 <div className="relative">
-                  <div
-                    className="sticky left-0
-                                top-[calc(var(--nav-offset-mobile)+56px)]
-                                md:top-[var(--nav-offset-desktop)]"
-                  >
-                    <img
-                      src={CareersSvg}
-                      alt="Gráfica OUMA"
-                      className="block w-full h-auto object-contain select-none pointer-events-none"
-                      draggable={false}
-                      loading="lazy"
-                    />
-                  </div>
+                 <div
+                   className="overflow-hidden shrink-0"
+                   style={{ width: "clamp(300px,39.32vw,755px)", height: "clamp(200px,29.32vw,563px)" }}
+                   data-cursor="pointer"
+                 >
+                   <InteractiveSvg
+                   svgUrl="/Nosotros/logoouma.svg"
+                   className="w-full h-full bg-[url('/Nosotros/fondo.svg')] bg-cover bg-center"
+                   mode="reveal"
+                 
+                   /* ⬇️ Estado inicial */
+                   startPainted                       // ya dibujado desde el inicio
+                   autoPlayOnMount={false}            // no animes al montar
+                 
+                   /* ⬇️ Comportamiento en hover */
+                   drawOnHover                        // anima al pasar el mouse
+                   eraseThenDrawOnHover               // primero borra y luego dibuja
+                   drawDurationMs={1900}
+                   drawStaggerMs={45}
+                   brushWidthMultiplier={0.12}        // sube si quedan “huequitos” en el fill
+                 
+                   // /* ⬇️ Opcional: excluye guías grises del dibujo (sin tocar el SVG) */
+                   // drawSelector=":is(path,rect,circle,ellipse,polygon,polyline)
+                   //              :not([stroke='#BFBFBF']):not([fill='#BFBFBF'])
+                   //              :not([stroke='#CCCCCC']):not([fill='#CCCCCC'])"
+                 
+                   /* ⬇️ Zoom inicial y zoom-out durante el reveal */
+                   zoomOutOnReveal
+                   zoomFrom={3}                     // cuánto acercas de inicio
+                   zoomFocusPercent={{ x: 0.27, y: 0.001 }}  // foco (0..1) ≈ segunda “n”
+                   zoomDurationMs={1400}
+                   zoomEasing="cubic-bezier(.2,.7,0,1)"
+                 
+                 />
+                 
+                 
+                 </div>
                 </div>
 
                 {/* Copy */}

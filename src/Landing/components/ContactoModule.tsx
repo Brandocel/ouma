@@ -2,32 +2,118 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Minus } from "lucide-react";
 import { sendContactEmail } from "../../services/emailService";
 
+/* Hook: anima max-height con la altura real del contenido */
+function useAutoMaxHeight(open: boolean) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [maxH, setMaxH] = useState<string>(open ? "9999px" : "0px");
+  const [opacity, setOpacity] = useState<number>(open ? 1 : 0);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+
+    // Medimos la altura real del contenido
+    const update = () => {
+      const h = el.scrollHeight;
+      if (open) {
+        // Primero fijamos a su altura para animar desde 0 -> h
+        setMaxH(`${h}px`);
+        setOpacity(1);
+      } else {
+        // Cerrar:  h -> 0
+        setMaxH("0px");
+        setOpacity(0);
+      }
+    };
+
+    update();
+
+    // Recalcular si cambia el tamaño de pantalla
+    const onResize = () => {
+      if (!contentRef.current) return;
+      if (open) setMaxH(`${contentRef.current.scrollHeight}px`);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [open]);
+
+  return { contentRef, maxH, opacity };
+}
+
+/* Componente reutilizable de acordeón */
+function Accordion({
+  id,
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  id: string;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const { contentRef, maxH, opacity } = useAutoMaxHeight(open);
+
+  return (
+    <div className="mb-[clamp(0.5rem,0.89vw,17px)]">
+      <button
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={id}
+        className="w-full text-left text-neutral-400 uppercase hover:text-neutral-900 transition-colors whitespace-nowrap flex items-center gap-2"
+        style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)", letterSpacing: "0.05em" }}
+      >
+        <span className={open ? "text-neutral-900" : ""}>{title}</span>
+
+        {/* Contenedor del icono con rotación suave */}
+        <span
+          aria-hidden="true"
+          className="inline-flex items-center justify-center"
+          style={{
+            width: 20,
+            height: 20,
+            flexShrink: 0,
+            transition: "transform 350ms ease",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+          }}
+        >
+          {/* Puedes dejar solo Plus y rotarlo; aquí alterno Plus/Minus para que se vea exacto */}
+          {open ? <Minus strokeWidth={1.5} /> : <Plus strokeWidth={1.5} />}
+        </span>
+      </button>
+
+      {/* Panel con animación de height auto (via max-height) + opacity */}
+      <div
+        id={id}
+        role="region"
+        aria-labelledby={`${id}-button`}
+        ref={contentRef}
+        className="overflow-hidden transition-[max-height,opacity] ease-out"
+        style={{
+          maxHeight: maxH,
+          opacity: opacity,
+          transitionDuration: "350ms",
+        }}
+      >
+        <div className="mt-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function ContactoModule() {
   const sectionRef = useRef<HTMLElement>(null);
   const [showOficies, setShowOficies] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
 
   // Estados del formulario
-  const [formData, setFormData] = useState({
-    nombre: "",
-    email: "",
-    mensaje: "",
-  });
-  const [errors, setErrors] = useState({
-    nombre: "",
-    email: "",
-    mensaje: "",
-  });
-  const [touched, setTouched] = useState({
-    nombre: false,
-    email: false,
-    mensaje: false,
-  });
+  const [formData, setFormData] = useState({ nombre: "", email: "", mensaje: "" });
+  const [errors, setErrors] = useState({ nombre: "", email: "", mensaje: "" });
+  const [touched, setTouched] = useState({ nombre: false, email: false, mensaje: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState<{
-    type: "success" | "error" | "";
-    text: string;
-  }>({ type: "", text: "" });
+  const [submitMessage, setSubmitMessage] = useState<{ type: "success" | "error" | ""; text: string; }>({ type: "", text: "" });
 
   // Validar campo individual
   const validateField = (name: string, value: string): string => {
@@ -37,100 +123,59 @@ export default function ContactoModule() {
         if (value.trim().length < 2) return "El nombre debe tener al menos 2 caracteres";
         if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) return "El nombre solo puede contener letras";
         return "";
-      
       case "email":
         if (!value.trim()) return "El email es requerido";
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) return "Ingresa un email válido";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Ingresa un email válido";
         return "";
-      
       case "mensaje":
         if (!value.trim()) return "El mensaje es requerido";
         if (value.trim().length < 10) return "El mensaje debe tener al menos 10 caracteres";
         if (value.trim().length > 500) return "El mensaje no puede exceder 500 caracteres";
         return "";
-      
       default:
         return "";
     }
   };
 
-  // Manejador de cambios en inputs
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Validar en tiempo real si el campo ya fue tocado
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (touched[name as keyof typeof touched]) {
       const error = validateField(name, value);
-      setErrors((prev) => ({
-        ...prev,
-        [name]: error,
-      }));
+      setErrors((prev) => ({ ...prev, [name]: error }));
     }
   };
 
-  // Manejador de blur (cuando el usuario sale del campo)
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setTouched((prev) => ({
-      ...prev,
-      [name]: true,
-    }));
-
+    setTouched((prev) => ({ ...prev, [name]: true }));
     const error = validateField(name, value);
-    setErrors((prev) => ({
-      ...prev,
-      [name]: error,
-    }));
+    setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
-  // Manejador de envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Marcar todos los campos como tocados
-    setTouched({
-      nombre: true,
-      email: true,
-      mensaje: true,
-    });
+    setTouched({ nombre: true, email: true, mensaje: true });
 
-    // Validar todos los campos
     const nombreError = validateField("nombre", formData.nombre);
     const emailError = validateField("email", formData.email);
     const mensajeError = validateField("mensaje", formData.mensaje);
 
-    setErrors({
-      nombre: nombreError,
-      email: emailError,
-      mensaje: mensajeError,
-    });
+    setErrors({ nombre: nombreError, email: emailError, mensaje: mensajeError });
 
-    // Si hay errores, no enviar
     if (nombreError || emailError || mensajeError) {
-      setSubmitMessage({
-        type: "error",
-        text: "Por favor corrige los errores antes de enviar",
-      });
+      setSubmitMessage({ type: "error", text: "Por favor corrige los errores antes de enviar" });
       return;
     }
 
     setIsSubmitting(true);
     setSubmitMessage({ type: "", text: "" });
-
     const result = await sendContactEmail(formData);
-
     setIsSubmitting(false);
 
     if (result.success) {
       setSubmitMessage({ type: "success", text: result.message });
-      // Limpiar formulario
       setFormData({ nombre: "", email: "", mensaje: "" });
       setErrors({ nombre: "", email: "", mensaje: "" });
       setTouched({ nombre: false, email: false, mensaje: false });
@@ -139,17 +184,14 @@ export default function ContactoModule() {
     }
   };
 
-  // Ajustar altura para ocupar viewport menos header (149px) y footer (69px)
+  // Altura mínima según viewport menos header+footer
   useEffect(() => {
     const updateHeight = () => {
       if (!sectionRef.current) return;
       const vh = window.innerHeight;
-      // Header: 149px, Footer: 69px = Total: 218px
-      // En 1920x1080: 1080 - 218 = 862px disponibles
-      const availableHeight = vh - 218;
+      const availableHeight = vh - 218; // 149 + 69
       sectionRef.current.style.minHeight = `${availableHeight}px`;
     };
-
     updateHeight();
     window.addEventListener("resize", updateHeight);
     return () => window.removeEventListener("resize", updateHeight);
@@ -157,36 +199,43 @@ export default function ContactoModule() {
 
   return (
     <section ref={sectionRef} className="bg-neutral-50">
-      <div className="w-full" style={{
-        maxWidth: "clamp(300px, 83.33vw, 1600px)",
-        paddingLeft: "clamp(1rem, 8.33vw, 160px)",
-        paddingRight: "clamp(1rem, 8.33vw, 160px)",
-        paddingTop: "clamp(2rem, 4.17vw, 80px)"
-      }}>
+      <div
+        className="w-full"
+        style={{
+          maxWidth: "clamp(300px, 83.33vw, 1600px)",
+          paddingLeft: "clamp(1rem, 8.33vw, 160px)",
+          paddingRight: "clamp(1rem, 8.33vw, 160px)",
+          paddingTop: "clamp(2rem, 4.17vw, 80px)",
+        }}
+      >
         {/* Título */}
-        <h1 className="font-medium text-neutral-900" style={{ 
-          fontSize: "clamp(2rem, 3.33vw, 64px)", 
-          lineHeight: "100%", 
-          letterSpacing: "0%",
-          marginBottom: "clamp(2rem, 4.17vw, 80px)"
-        }}>
+        <h1
+          className="font-medium text-neutral-900"
+          style={{
+            fontSize: "clamp(2rem, 3.33vw, 64px)",
+            lineHeight: "100%",
+            letterSpacing: "0%",
+            marginBottom: "clamp(2rem, 4.17vw, 80px)",
+          }}
+        >
           Contacto
         </h1>
 
-        {/* Grid de 2 columnas: Formulario | Oficies+Social */}
-        <div className="flex gap-x-[clamp(2rem,13.85vw,266px)]" style={{
-          width: "clamp(300px, 66.30vw, 1273px)"
-        }}>
-          {/* Columna 1: Formulario - 916x452 */}
-          <form 
+        {/* Grid de 2 columnas: Formulario | Acordeones */}
+        <div
+          className="flex gap-x-[clamp(2rem,13.85vw,266px)]"
+          style={{ width: "clamp(300px, 66.30vw, 1273px)" }}
+        >
+          {/* Columna 1: Formulario */}
+          <form
             onSubmit={handleSubmit}
             style={{
               width: "clamp(300px, 47.71vw, 916px)",
               height: "clamp(200px, 23.54vw, 452px)",
-              flexShrink: 0
+              flexShrink: 0,
             }}
           >
-            {/* NOMBRE y EMAIL en la misma fila */}
+            {/* NOMBRE y EMAIL */}
             <div className="flex gap-x-[clamp(1rem,2.97vw,57px)] mb-[clamp(2rem,4.17vw,80px)]">
               {/* NOMBRE */}
               <div style={{ flex: "0 0 clamp(150px,22.40vw,430px)" }}>
@@ -203,10 +252,7 @@ export default function ContactoModule() {
                       ? "border-red-500 focus:border-red-500"
                       : "border-neutral-300 focus:border-neutral-900"
                   }`}
-                  style={{ 
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)",
-                    letterSpacing: "0.05em"
-                  }}
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)", letterSpacing: "0.05em" }}
                 />
                 {errors.nombre && touched.nombre && (
                   <p className="text-red-500 mt-1" style={{ fontSize: "clamp(0.625rem, 0.73vw, 14px)" }}>
@@ -230,10 +276,7 @@ export default function ContactoModule() {
                       ? "border-red-500 focus:border-red-500"
                       : "border-neutral-300 focus:border-neutral-900"
                   }`}
-                  style={{ 
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)",
-                    letterSpacing: "0.05em"
-                  }}
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)", letterSpacing: "0.05em" }}
                 />
                 {errors.email && touched.email && (
                   <p className="text-red-500 mt-1" style={{ fontSize: "clamp(0.625rem, 0.73vw, 14px)" }}>
@@ -257,11 +300,11 @@ export default function ContactoModule() {
                     ? "border-red-500 focus:border-red-500"
                     : "border-neutral-300 focus:border-neutral-900"
                 }`}
-                style={{ 
+                style={{
                   fontSize: "clamp(0.875rem, 1.04vw, 20px)",
                   letterSpacing: "0.05em",
                   height: "clamp(60px, 6.77vw, 130px)",
-                  verticalAlign: "top"
+                  verticalAlign: "top",
                 }}
               />
               {errors.mensaje && touched.mensaje && (
@@ -282,14 +325,11 @@ export default function ContactoModule() {
               >
                 {isSubmitting ? "ENVIANDO..." : "SEND"}
               </button>
-              
-              {/* Mensaje de respuesta */}
+
               {submitMessage.type && (
                 <p
                   className={`mt-4 text-sm ${
-                    submitMessage.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
+                    submitMessage.type === "success" ? "text-green-600" : "text-red-600"
                   }`}
                   style={{ fontSize: "clamp(0.75rem, 0.83vw, 16px)" }}
                 >
@@ -299,87 +339,77 @@ export default function ContactoModule() {
             </div>
           </form>
 
-          {/* Columna 2: OFICIES + SOCIAL (ambos acordeones) - 91x452 */}
-          <div style={{
-            width: "clamp(80px, 4.74vw, 91px)",
-            height: "clamp(200px, 23.54vw, 452px)",
-            flexShrink: 0
-          }}>
-            {/* OFICIES acordeón */}
-            <div className="mb-[clamp(0.5rem,0.89vw,17px)]">
-              <button 
-                onClick={() => setShowOficies(!showOficies)}
-                className="w-full text-left text-neutral-400 uppercase hover:text-neutral-900 transition-colors whitespace-nowrap flex items-center gap-2" 
-                style={{
-                  fontSize: "clamp(0.875rem, 1.04vw, 20px)",
-                  letterSpacing: "0.05em"
-                }}
-              >
-                <span>OFICIES</span>
-                {showOficies ? (
-                  <Minus style={{ width: "20px", height: "20px", flexShrink: 0 }} strokeWidth={1.5} />
-                ) : (
-                  <Plus style={{ width: "20px", height: "20px", flexShrink: 0 }} strokeWidth={1.5} />
-                )}
-              </button>
-              {showOficies && (
-                <div className="mt-4 space-y-2">
-                  <a href="#" className="block text-neutral-900 underline hover:text-neutral-600 transition-colors" style={{
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)"
-                  }}>
-                    Oficina 1
-                  </a>
-                  <a href="#" className="block text-neutral-900 underline hover:text-neutral-600 transition-colors" style={{
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)"
-                  }}>
-                    Oficina 2
-                  </a>
-                  <a href="#" className="block text-neutral-900 underline hover:text-neutral-600 transition-colors" style={{
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)"
-                  }}>
-                    Oficina 3
-                  </a>
-                </div>
-              )}
-            </div>
+          {/* Columna 2: OFICIES + SOCIAL (acordeones) */}
+          <div
+            style={{
+              width: "clamp(80px, 4.74vw, 91px)",
+              height: "clamp(200px, 23.54vw, 452px)",
+              flexShrink: 0,
+            }}
+          >
+            {/* OFICIES */}
+            <Accordion
+              id="oficies-accordion"
+              title="OFICIES"
+              open={showOficies}
+              onToggle={() => setShowOficies((v) => !v)}
+            >
+              <div className="space-y-2">
+                <a
+                  href="#"
+                  className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
+                >
+                  Oficina 1
+                </a>
+                <a
+                  href="#"
+                  className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
+                >
+                  Oficina 2
+                </a>
+                <a
+                  href="#"
+                  className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
+                >
+                  Oficina 3
+                </a>
+              </div>
+            </Accordion>
 
-            {/* SOCIAL acordeón */}
-            <div>
-              <button 
-                onClick={() => setShowSocial(!showSocial)}
-                className="w-full text-left text-neutral-400 uppercase hover:text-neutral-900 transition-colors whitespace-nowrap flex items-center gap-2" 
-                style={{
-                  fontSize: "clamp(0.875rem, 1.04vw, 20px)",
-                  letterSpacing: "0.05em"
-                }}
-              >
-                <span>SOCIAL</span>
-                {showSocial ? (
-                  <Minus style={{ width: "20px", height: "20px", flexShrink: 0 }} strokeWidth={1.5} />
-                ) : (
-                  <Plus style={{ width: "20px", height: "20px", flexShrink: 0 }} strokeWidth={1.5} />
-                )}
-              </button>
-              {showSocial && (
-                <div className="mt-4 space-y-2">
-                  <a href="#" className="block text-neutral-900 underline hover:text-neutral-600 transition-colors" style={{
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)"
-                  }}>
-                    Facebook
-                  </a>
-                  <a href="#" className="block text-neutral-900 underline hover:text-neutral-600 transition-colors" style={{
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)"
-                  }}>
-                    Instagram
-                  </a>
-                  <a href="#" className="block text-neutral-900 underline hover:text-neutral-600 transition-colors" style={{
-                    fontSize: "clamp(0.875rem, 1.04vw, 20px)"
-                  }}>
-                    Linkedin
-                  </a>
-                </div>
-              )}
-            </div>
+            {/* SOCIAL */}
+            <Accordion
+              id="social-accordion"
+              title="SOCIAL"
+              open={showSocial}
+              onToggle={() => setShowSocial((v) => !v)}
+            >
+              <div className="space-y-2">
+                <a
+                  href="#"
+                  className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
+                >
+                  Facebook
+                </a>
+                <a
+                  href="#"
+                  className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
+                >
+                  Instagram
+                </a>
+                <a
+                  href="#"
+                  className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
+                  style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
+                >
+                  Linkedin
+                </a>
+              </div>
+            </Accordion>
           </div>
         </div>
       </div>

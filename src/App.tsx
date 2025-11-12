@@ -6,6 +6,7 @@ import CustomCursor from "./common/cursor/CustomCursor";
 import Footer from "./common/footer/Footer";
 import Splash from "./common/splash/Splash";
 import GlobalScrollScale from "./common/scroll/GlobalScrollScale";
+import SharedImageTransition from "./Landing/components/SharedImageTransition";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -35,6 +36,9 @@ export default function App() {
 
       {/* Cursor personalizado */}
       <CustomCursor />
+
+      {/* Overlay global que maneja la animación shared-element */}
+      <SharedImageTransition />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import InteractiveSvg from "../../common/svg/InteractiveSvg";
 
 export default function NosotrosModule() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -106,20 +107,44 @@ export default function NosotrosModule() {
               gap: "clamp(2rem, 4.17vw, 4rem)"
             }}>
               <div className="flex items-start" style={{ gap: "clamp(2rem, 4.17vw, 4rem)" }}>
-                {/* Ilustración */}
-                <div
-                  className="overflow-hidden shrink-0"
-                  style={{ width: "clamp(300px, 39.32vw, 755px)", height: "clamp(200px, 29.32vw, 563px)" }}
-                  data-cursor="pointer"
-                >
-                  <img
-                    src="/Nosotros/columna1.svg"
-                    alt="Nosotros OUMA"
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                    loading="lazy"
-                  />
-                </div>
+<div
+  className="overflow-hidden shrink-0"
+  style={{ width: "clamp(300px,39.32vw,755px)", height: "clamp(200px,29.32vw,563px)" }}
+  data-cursor="pointer"
+>
+  <InteractiveSvg
+  svgUrl="/Nosotros/logoouma.svg"
+  className="w-full h-full bg-[url('/Nosotros/fondo.svg')] bg-cover bg-center"
+  mode="reveal"
+
+  /* ⬇️ Estado inicial */
+  startPainted                       // ya dibujado desde el inicio
+  autoPlayOnMount={false}            // no animes al montar
+
+  /* ⬇️ Comportamiento en hover */
+  drawOnHover                        // anima al pasar el mouse
+  eraseThenDrawOnHover               // primero borra y luego dibuja
+  drawDurationMs={1900}
+  drawStaggerMs={45}
+  brushWidthMultiplier={0.12}        // sube si quedan “huequitos” en el fill
+
+  // /* ⬇️ Opcional: excluye guías grises del dibujo (sin tocar el SVG) */
+  // drawSelector=":is(path,rect,circle,ellipse,polygon,polyline)
+  //              :not([stroke='#BFBFBF']):not([fill='#BFBFBF'])
+  //              :not([stroke='#CCCCCC']):not([fill='#CCCCCC'])"
+
+  /* ⬇️ Zoom inicial y zoom-out durante el reveal */
+  zoomOutOnReveal
+  zoomFrom={3}                     // cuánto acercas de inicio
+  zoomFocusPercent={{ x: 0.27, y: 0.001 }}  // foco (0..1) ≈ segunda “n”
+  zoomDurationMs={1400}
+  zoomEasing="cubic-bezier(.2,.7,0,1)"
+
+/>
+
+
+</div>
+
 
                 {/* Texto Panel 1 */}
                 <div className="shrink-0" style={{ width: "clamp(300px, 47.66vw, 915px)" }} data-cursor="text">
