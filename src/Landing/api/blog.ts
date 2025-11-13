@@ -25,8 +25,8 @@ export const blogArticles: BlogArticle[] = [
       "En su estado crudo, la madera habla. Se contrae, se abre, se oxida, cambia de color. Su superficie registra el paso del tiempo, el clima, el contacto humano. Cada grieta es una conversación con el entorno.",
     ],
     images: {
-      left: "/src/assets/blog/img5.png", // la pequeña (480x302 en layout)
-      right: "/src/assets/blog/img9.png" // la grande (700x478 en layout)
+      left: "img5.png", // la pequeña (480x302 en layout)
+      right: "img9.png" // la grande (700x478 en layout)
     },
   },
   // Aplica la misma regla a los demás artículos:

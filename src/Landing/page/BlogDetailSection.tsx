@@ -7,28 +7,37 @@ import React, {
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getBlogArticleBySlug } from "../api/blog";
+import left from "../../assets/blog/img5.png";
+import right from "../../assets/blog/img9.png";
 
-/* ------------------------------------------------------ */
-/* 🔹 Carga de imágenes base (igual que antes) */
-/* ------------------------------------------------------ */
-const FOTOS = import.meta.glob("../../assets/blog/*", {
-  eager: true,
-  query: "?url",
-}) as Record<string, { default: string }>;
+const FOTOS = import.meta.glob("../../assets/blog/*", { eager: true, query: "?url" }) as Record<string, { default: string }>;
 
+function resolveImg(filename?: string): string {
+  if (!filename) return "";
+  const hit = Object.entries(FOTOS).find(([p]) => p.endsWith("/" + filename));
+  return hit?.[1]?.default ?? "";
+}
 type Rect = { top: number; left: number; width: number; height: number };
 
 function fileName(pathOrUrl: string) {
   const last = pathOrUrl.split("/").pop() ?? "";
-  try { return decodeURIComponent(last); } catch { return last; }
+  try {
+    return decodeURIComponent(last);
+  } catch {
+    return last;
+  }
 }
+
+
 
 function resolveGrande(filename: string): string {
   const m = filename.match(/^(.*)\.([^.]+)$/);
   const base = m ? m[1] : filename.replace(/\.[^.]+$/, "");
-  const ext  = m ? m[2] : filename.split(".").pop() ?? "png";
+  const ext = m ? m[2] : filename.split(".").pop() ?? "png";
   const grandeName = `${base}Grande.${ext}`;
-  const hitGrande = Object.entries(FOTOS).find(([p]) => p.endsWith("/" + grandeName));
+  const hitGrande = Object.entries(FOTOS).find(([p]) =>
+    p.endsWith("/" + grandeName)
+  );
   if (hitGrande) return hitGrande[1].default;
   const hit = Object.entries(FOTOS).find(([p]) => p.endsWith("/" + filename));
   return hit?.[1]?.default ?? "";
@@ -39,9 +48,6 @@ function toSharedKey(anyName: string): string {
   return fn.replace(/(?:[_\-\s]?grande)(?=\.[^.]+$)/i, "");
 }
 
-/* ====================================================== */
-/* 📰 BlogDetailSection */
-/* ====================================================== */
 export default function BlogDetailSection() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -50,9 +56,6 @@ export default function BlogDetailSection() {
   const targetImgRef = useRef<HTMLImageElement | null>(null);
   const [hideUntilDone, setHideUntilDone] = useState(true);
 
-  /* ------------------------------------------------------ */
-  /* 📡 Sincroniza fin de animación compartida */
-  /* ------------------------------------------------------ */
   useEffect(() => {
     const onDone = () => setHideUntilDone(false);
     window.addEventListener("shared-image-done", onDone);
@@ -63,9 +66,6 @@ export default function BlogDetailSection() {
     };
   }, []);
 
-  /* ------------------------------------------------------ */
-  /* 📤 Envía posición destino al cargar imagen */
-  /* ------------------------------------------------------ */
   useEffect(() => {
     const img = targetImgRef.current;
     if (!img) return;
@@ -77,18 +77,27 @@ export default function BlogDetailSection() {
         width: r.width,
         height: r.height,
       };
-      window.dispatchEvent(new CustomEvent("shared-image-animate", { detail: { to } }));
+      window.dispatchEvent(
+        new CustomEvent("shared-image-animate", { detail: { to } })
+      );
     };
-    if (img.complete && img.naturalWidth) { sendRect(); return; }
-    img.addEventListener("load", sendRect);
-    return () => img.removeEventListener("load", sendRect);
+    if (img.complete && img.naturalWidth) {
+      sendRect();
+      return;
+    }
+    const onLoad = () => sendRect();
+    img.addEventListener("load", onLoad);
+    return () => img.removeEventListener("load", onLoad);
   }, [slug]);
 
   if (!article) {
     return (
       <main className="container mx-auto max-w-[1440px] px-4 md:px-6 py-16">
         <p className="text-neutral-500">Artículo no encontrado.</p>
-        <button onClick={() => navigate("/blog")} className="text-neutral-800 underline">
+        <button
+          onClick={() => navigate("/blog")}
+          className="text-neutral-800 underline"
+        >
           Volver
         </button>
       </main>
@@ -98,15 +107,14 @@ export default function BlogDetailSection() {
   const imgUrl = resolveGrande(article.file);
   const sharedKey = toSharedKey(article.file);
 
-  /* ------------------------------------------------------ */
-  /* 🔙 Animación de regreso (idéntica al ProyectoDetalle) */
-  /* ------------------------------------------------------ */
   const handleBack = (ev?: React.MouseEvent) => {
     ev?.preventDefault();
     const img = targetImgRef.current;
-    if (!img) return navigate("/blog");
+    if (!img) {
+      navigate("/blog");
+      return;
+    }
 
-    // Ocultar imagen del detalle inmediatamente
     setHideUntilDone(true);
 
     const rect = img.getBoundingClientRect();
@@ -118,7 +126,6 @@ export default function BlogDetailSection() {
     };
     const objectFit = getComputedStyle(img).objectFit || "cover";
 
-    // Guardamos el estado compartido
     (window as any).__sharedImagePending = {
       src: img.src,
       from,
@@ -126,11 +133,10 @@ export default function BlogDetailSection() {
       direction: "back" as const,
       sharedKey,
     };
-
     navigate("/blog");
   };
 
-return (
+  return (
     <main className="container mx-auto max-w-[1440px] px-[clamp(1rem,2vw,3rem)]">
       {/* Volver */}
       <div className="text-[clamp(0.9rem,0.8vw,1.2rem)] text-neutral-400 mb-[clamp(1.5rem,2vw,3rem)]">
@@ -141,7 +147,7 @@ return (
 
       <HScrollRow>
         {/* Columna izquierda */}
-        <div className="shrink-0 pr-[clamp(2rem,3vw,4rem)] align-top">
+        <div className=" align-top">
           <div
             className="overflow-hidden bg-[#D9D9D9] mb-[clamp(1.5rem,2vw,2.5rem)]"
             style={{
@@ -151,13 +157,12 @@ return (
           >
             <img
               ref={targetImgRef}
-              src={article.images?.left ?? imgUrl}
+              src={resolveImg(article.images?.left)}
               alt={article.title}
               className="w-full h-full object-cover"
               draggable={false}
               data-shared-key={sharedKey}
               style={{
-                imageRendering: "auto",
                 opacity: hideUntilDone ? 0 : 1,
                 visibility: hideUntilDone ? "hidden" : "visible",
                 transition: "opacity 160ms ease, visibility 0s linear 160ms",
@@ -168,7 +173,7 @@ return (
           <h1
             className="font-medium text-neutral-900"
             style={{
-              fontSize: "clamp(2.8rem,3vw,4.8rem)",
+              fontSize: "clamp(2.8rem,3vw,3rem)",
               lineHeight: "clamp(3.4rem,3.5vw,6rem)",
             }}
           >
@@ -218,6 +223,8 @@ return (
     }}
   />
 </article>
+
+
         {/* Columna derecha */}
         <div className="flex flex-col items-start shrink-0 align-top">
           <div
@@ -228,7 +235,7 @@ return (
             }}
           >
             <img
-              src={article.images?.right ?? "/src/assets/blog/img9.png"}
+              src={resolveImg(article.images?.right)}
               alt="Imagen derecha"
               className="w-full h-full object-cover"
               draggable={false}
@@ -240,13 +247,12 @@ return (
   );
 }
 
-/* ------------------------------------------------------ */
-/* 🌀 Scroll horizontal fluido con inercia tipo proyectos */
-/* ------------------------------------------------------ */
+/* -------------------------------------------------------------------------- */
+/* ✅ Scroll horizontal actualizado (idéntico al BlogSection) */
+/* -------------------------------------------------------------------------- */
 function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Arranque animación “back” con placeholder blanco temporal
   useLayoutEffect(() => {
     const pending = (window as any).__sharedImagePending;
     if (!pending || pending.direction !== "back") return;
@@ -254,7 +260,6 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       `img[data-shared-key="${pending.sharedKey}"]`
     ) as HTMLImageElement | null;
     if (!match) return;
-
     match.style.visibility = "hidden";
     const r = match.getBoundingClientRect();
     const to = {
@@ -263,36 +268,16 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       width: r.width,
       height: r.height,
     };
-
-    // 👇 Placeholder temporal para la transición
-    const ph = document.createElement("div");
-    Object.assign(ph.style, {
-      position: "absolute",
-      top: `${to.top}px`,
-      left: `${to.left}px`,
-      width: `${to.width}px`,
-      height: `${to.height}px`,
-      background: "#fff",
-      borderRadius: "6px",
-      zIndex: "9998",
-      pointerEvents: "none",
-    });
-    document.body.appendChild(ph);
-
-    const onDone = () => {
-      ph.remove();
-      match.style.visibility = "visible";
-      (window as any).__sharedImagePending = undefined;
-    };
-    window.addEventListener("shared-image-done", onDone, { once: true });
-
-    window.dispatchEvent(new CustomEvent("shared-image-start", { detail: pending }));
+    window.dispatchEvent(
+      new CustomEvent("shared-image-start", { detail: pending })
+    );
     requestAnimationFrame(() => {
-      window.dispatchEvent(new CustomEvent("shared-image-animate", { detail: { to } }));
+      window.dispatchEvent(
+        new CustomEvent("shared-image-animate", { detail: { to } })
+      );
     });
   }, []);
 
-  // Scroll inercial suave (idéntico al de Inicio)
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
@@ -309,7 +294,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
 
     const momentum = () => {
       v *= 0.95;
-      if (Math.abs(v) < 0.2) {
+      if (Math.abs(v) < 0.25) {
         stopMomentum();
         return;
       }
@@ -325,6 +310,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       stopMomentum();
       el.setPointerCapture(e.pointerId);
+      // Removed unused startX assignment
       lastX = e.clientX;
       lastT = performance.now();
       v = 0;
@@ -349,16 +335,26 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       rafMom = requestAnimationFrame(momentum);
     };
 
+    // Wheel scroll
+    const onWheel = (e: WheelEvent) => {
+      const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (d === 0) return;
+      el.scrollLeft += d * 0.85;
+      e.preventDefault();
+    };
+
     el.addEventListener("pointerdown", onPointerDown);
     el.addEventListener("pointermove", onPointerMove);
     el.addEventListener("pointerup", onPointerUp);
     el.addEventListener("pointercancel", onPointerUp);
+    el.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
       el.removeEventListener("pointerdown", onPointerDown);
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerUp);
       el.removeEventListener("pointercancel", onPointerUp);
+      el.removeEventListener("wheel", onWheel);
       stopMomentum();
     };
   }, []);
@@ -367,7 +363,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
     <div
       ref={wrapRef}
       className="no-scrollbar overflow-x-auto overflow-y-hidden cursor-grab select-none flex w-full"
-      style={{ touchAction: "pan-y" }}
+      style={{ touchAction: "pan-y", scrollSnapType: "x proximity" }}
     >
       <div className="flex w-max gap-[clamp(2.5rem,4vw,8rem)] items-start pr-1">
         {children}

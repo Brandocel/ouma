@@ -173,13 +173,13 @@ function PhoneField() {
   );
 }
 
-/* ========= Drag + Snap (ignorando inputs/selects/etc) ========= */
-const INTERACTIVE_SELECTOR =
-  'input, select, textarea, button, [role="button"], a, label, [contenteditable="true"]';
-const isInteractiveTarget = (e: Event) => {
-  const t = e.target as HTMLElement | null;
-  return !!t && (!!t.closest(INTERACTIVE_SELECTOR) || !!t.closest("[data-drag-ignore]"));
-};
+// /* ========= Drag + Snap (ignorando inputs/selects/etc) ========= */
+// const INTERACTIVE_SELECTOR =
+//   'input, select, textarea, button, [role="button"], a, label, [contenteditable="true"]';
+// const isInteractiveTarget = (e: Event) => {
+//   const t = e.target as HTMLElement | null;
+//   return !!t && (!!t.closest(INTERACTIVE_SELECTOR) || !!t.closest("[data-drag-ignore]"));
+// };
 
 export default function CareersModule() {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -234,7 +234,7 @@ export default function CareersModule() {
     };
 
     const onDown = (e: PointerEvent) => {
-      if (isInteractiveTarget(e)) return; // no drag sobre inputs
+      // if (isInteractiveTarget(e)) return; // no drag sobre inputs
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       dragging = true;
       startX = e.clientX;
@@ -292,21 +292,49 @@ export default function CareersModule() {
     };
   }, []);
 
+
+    const sectionRef = useRef<HTMLElement>(null);
+  const [draggingScroll, setDraggingScroll] = useState(false);
+  const dragStartX = useRef(0);
+  const dragStartScroll = useRef(0);
+
+    const onScrollPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    setDraggingScroll(true);
+    dragStartX.current = e.clientX;
+    dragStartScroll.current = el.scrollLeft;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  };
+
+  const onScrollPointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (!draggingScroll) return;
+    const el = scrollerRef.current;
+    if (!el) return;
+    const dx = e.clientX - dragStartX.current;
+    el.scrollLeft = dragStartScroll.current - dx;
+    e.preventDefault();
+  };
+
+  const onScrollPointerUp: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    setDraggingScroll(false);
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
+
   return (
     <main className="overflow-x-hidden">
-      {/* Scroller horizontal */}
+      {/* DESKTOP SCROLLER */}
       <div
         ref={scrollerRef}
-        className="
-          w-[100svw] overflow-x-auto overflow-y-hidden
-          snap-x snap-mandatory snap-always
-          select-none
-          [overscroll-behavior-x:contain]
-          [&::-webkit-scrollbar]:hidden
-          cursor-grab active:cursor-grabbing
-          [touch-action:pan-y]
-        "
+        className={`hidden md:block w-full overflow-x-auto overflow-y-hidden select-none overscroll-x-contain [&::-webkit-scrollbar]:hidden ${
+          draggingScroll ? "cursor-grabbing" : "cursor-grab"
+        }`}
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        onPointerDown={onScrollPointerDown}
+        onPointerMove={onScrollPointerMove}
+        onPointerUp={onScrollPointerUp}
+        onPointerCancel={onScrollPointerUp}
       >
         <div className="flex w-[200svw]">
           {/* ===== Panel 1 ===== */}
@@ -410,7 +438,7 @@ export default function CareersModule() {
             data-cursor="ignore"
             style={{ cursor: "auto" }}
           >
-            <div className="mx-auto max-w-[1440px] px-4 pt-[clamp(112px,10vw,160px)] pb-12 md:pb-16">
+            <div className="mx-auto max-w-[1440px] px-4 pt-[clamp(112px,10vw,120px)] pb-12 md:pb-16">
               <h2 className="text-[48px] md:text-[72px] leading-[0.95] font-semibold tracking-tight text-black">
                 Tus datos
               </h2>
@@ -486,3 +514,7 @@ export default function CareersModule() {
     </main>
   );
 }
+function isInteractiveTarget(e: PointerEvent) {
+  throw new Error("Function not implemented.");
+}
+

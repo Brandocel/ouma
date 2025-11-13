@@ -348,7 +348,7 @@ export default function ContactoModule() {
             }}
           >
             {/* OFICIES */}
-            <Accordion
+            {/* <Accordion
               id="oficies-accordion"
               title="OFICIES"
               open={showOficies}
@@ -377,7 +377,7 @@ export default function ContactoModule() {
                   Oficina 3
                 </a>
               </div>
-            </Accordion>
+            </Accordion> */}
 
             {/* SOCIAL */}
             <Accordion
@@ -386,7 +386,7 @@ export default function ContactoModule() {
               open={showSocial}
               onToggle={() => setShowSocial((v) => !v)}
             >
-              <div className="space-y-2">
+              <div className="">
                 <a
                   href="#"
                   className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"

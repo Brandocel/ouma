@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import main from '../../assets/productos/img10.png';
+import rational from '../../assets/productos/img11.png';
+import bravat from '../../assets/productos/img12.png';
 
 export default function ProductsSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -8,9 +11,9 @@ export default function ProductsSection() {
   const dragStartScroll = useRef(0);
 
   const images = {
-    main: "/src/assets/productos/img10.png",
-    rational: "/src/assets/productos/img11.png",
-    bravat: "/src/assets/productos/img12.png",
+    main,
+    rational,
+    bravat,
   };
 
   // ✅ Altura igual que BIM y Casa del Mar

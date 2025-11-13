@@ -122,14 +122,7 @@ export default function DesignSection() {
     <main ref={sectionRef} className="bg-neutral-50 text-neutral-900 flex flex-col">
       {/* Volver sin subrayado ni outline */}
       <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 pt-6 md:pt-10">
-        <button
-          onMouseDown={(e) => e.preventDefault()} // quita focus outline al presionar
-          onClick={() => navigate("/servicios")}
-          className="text-[12px] leading-none text-neutral-400 hover:text-neutral-700 no-underline outline-none focus:outline-none focus:ring-0 active:outline-none"
-          style={{ textDecoration: "none" }}
-        >
-          ← Volver
-        </button>
+       
       </div>
 
       {/* Contenido con scroll horizontal */}
@@ -139,6 +132,7 @@ export default function DesignSection() {
           className="no-scrollbar overflow-x-auto overflow-y-hidden select-none cursor-grab"
           style={{ touchAction: "pan-y" }}
         >
+          
           <div
             className="grid items-start gap-x-6 lg:gap-x-10 gap-y-6 pr-1"
             style={{
@@ -151,8 +145,17 @@ export default function DesignSection() {
               margin: "0 auto",
             }}
           >
+            
             {/* Texto (izquierda) */}
             <div className="justify-self-start text-right">
+               <button
+          onMouseDown={(e) => e.preventDefault()} // quita focus outline al presionar
+          onClick={() => navigate("/servicios")}
+          className="text-[12px] leading-none text-neutral-400 hover:text-neutral-700 no-underline outline-none focus:outline-none focus:ring-0 active:outline-none"
+          style={{ textDecoration: "none" }}
+        >
+          ← Volver
+        </button>
               <div className="text-[#A6A6A6] font-medium text-[clamp(18px,2.1vw,28px)] leading-none mb-1">
                 01
               </div>
