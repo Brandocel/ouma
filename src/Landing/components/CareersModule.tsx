@@ -293,7 +293,6 @@ export default function CareersModule() {
   }, []);
 
 
-    const sectionRef = useRef<HTMLElement>(null);
   const [draggingScroll, setDraggingScroll] = useState(false);
   const dragStartX = useRef(0);
   const dragStartScroll = useRef(0);
@@ -513,8 +512,5 @@ export default function CareersModule() {
       </div>
     </main>
   );
-}
-function isInteractiveTarget(e: PointerEvent) {
-  throw new Error("Function not implemented.");
 }
 

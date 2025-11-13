@@ -105,7 +105,6 @@ function Accordion({
 
 export default function ContactoModule() {
   const sectionRef = useRef<HTMLElement>(null);
-  const [showOficies, setShowOficies] = useState(false);
   const [showSocial, setShowSocial] = useState(false);
 
   // Estados del formulario

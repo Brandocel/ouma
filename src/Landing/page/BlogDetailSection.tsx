@@ -7,8 +7,6 @@ import React, {
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getBlogArticleBySlug } from "../api/blog";
-import left from "../../assets/blog/img5.png";
-import right from "../../assets/blog/img9.png";
 
 const FOTOS = import.meta.glob("../../assets/blog/*", { eager: true, query: "?url" }) as Record<string, { default: string }>;
 
@@ -30,18 +28,6 @@ function fileName(pathOrUrl: string) {
 
 
 
-function resolveGrande(filename: string): string {
-  const m = filename.match(/^(.*)\.([^.]+)$/);
-  const base = m ? m[1] : filename.replace(/\.[^.]+$/, "");
-  const ext = m ? m[2] : filename.split(".").pop() ?? "png";
-  const grandeName = `${base}Grande.${ext}`;
-  const hitGrande = Object.entries(FOTOS).find(([p]) =>
-    p.endsWith("/" + grandeName)
-  );
-  if (hitGrande) return hitGrande[1].default;
-  const hit = Object.entries(FOTOS).find(([p]) => p.endsWith("/" + filename));
-  return hit?.[1]?.default ?? "";
-}
 
 function toSharedKey(anyName: string): string {
   const fn = fileName(anyName).toLowerCase();
@@ -104,7 +90,6 @@ export default function BlogDetailSection() {
     );
   }
 
-  const imgUrl = resolveGrande(article.file);
   const sharedKey = toSharedKey(article.file);
 
   const handleBack = (ev?: React.MouseEvent) => {
