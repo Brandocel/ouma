@@ -121,6 +121,7 @@ export default function BlogDetailSection() {
     navigate("/blog");
   };
 
+
   return (
     <main className="container mx-auto max-w-[1440px] px-[clamp(1rem,2vw,3rem)]">
       {/* Volver */}
