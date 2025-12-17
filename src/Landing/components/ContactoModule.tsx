@@ -387,14 +387,18 @@ export default function ContactoModule() {
             >
               <div className="">
                 <a
-                  href="#"
+                  href="https://www.facebook.com/profile.php?id=61584908728337"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
                   style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
                 >
                   Facebook
                 </a>
                 <a
-                  href="#"
+                  href="https://www.instagram.com/ouma.espacio/"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
                   style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
                 >
@@ -402,6 +406,8 @@ export default function ContactoModule() {
                 </a>
                 <a
                   href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="block text-neutral-900 underline hover:text-neutral-600 transition-colors"
                   style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
                 >
