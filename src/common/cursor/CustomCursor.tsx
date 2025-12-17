@@ -11,7 +11,7 @@ const isCoarsePointer = () =>
   (window.matchMedia?.("(pointer: coarse)")?.matches || "ontouchstart" in window);
 
 // 🔒 Zonas donde suele ocultarse el cursor custom
-// OJO: dejamos a/role=button fuera si tienen data-cursor
+// Importante: aquí también están data-cursor ignore/off
 const HIDE_SELECTOR =
   'input, textarea, select, button, [contenteditable="true"], [data-cursor="ignore"], [data-cursor="off"]';
 
@@ -45,18 +45,38 @@ export default function CustomCursor() {
 
       const t = e.target as HTMLElement | null;
 
-      // 1) Primero detecta si estamos en una región con data-cursor (override)
+      // 1) Detecta región con data-cursor (override)
       const cursorRegion = t?.closest<HTMLElement>("[data-cursor]") ?? null;
+      const regionMode = cursorRegion?.dataset.cursor;
+
+      // ✅ Si la región dice "off" o "ignore", apaga cursor custom SIEMPRE
+      if (regionMode === "off" || regionMode === "ignore") {
+        setVisible(false);
+        currentElement.current = null;
+        setIsDragging(false);
+
+        if (!USE_SMOOTHING) {
+          pos.current = { x, y };
+          updateTransforms(x, y);
+        }
+        return;
+      }
+
+      // Guardamos el elemento “activo” para drag etc.
       currentElement.current = cursorRegion ?? null;
 
       // 2) Si NO hay data-cursor cerca, entonces aplica zonas ocultas
-      const hideZone = !cursorRegion && t?.closest(HIDE_SELECTOR);
+      const hideZone = !cursorRegion && !!t?.closest(HIDE_SELECTOR);
 
       if (hideZone) {
         setVisible(false);
         currentElement.current = null;
         setIsDragging(false);
-        if (!USE_SMOOTHING) updateTransforms(x, y);
+
+        if (!USE_SMOOTHING) {
+          pos.current = { x, y };
+          updateTransforms(x, y);
+        }
         return;
       }
 
@@ -130,9 +150,14 @@ export default function CustomCursor() {
           "left-0 top-0 rounded-full mix-blend-difference",
           "transition-[width,height,opacity] duration-150 ease-out will-change-transform",
           visible ? "opacity-100" : "opacity-0",
-          "outline outline-1 outline-white/40"
+          "outline outline-1 outline-white/40",
         ].join(" ")}
-        style={{ width: size, height: size, background: "white", transform: "translate3d(-9999px,-9999px,0)" }}
+        style={{
+          width: size,
+          height: size,
+          background: "white",
+          transform: "translate3d(-9999px,-9999px,0)",
+        }}
       />
       <div
         ref={labelRef}
@@ -140,7 +165,7 @@ export default function CustomCursor() {
           "pointer-events-none fixed z-[10000] -translate-x-1/2 -translate-y-1/2",
           "left-0 top-0 select-none text-[11px] font-semibold uppercase tracking-wide",
           "mix-blend-difference text-white transition-opacity duration-150 will-change-transform",
-          visible && (mode === "drag" || mode === "view") ? "opacity-100" : "opacity-0"
+          visible && (mode === "drag" || mode === "view") ? "opacity-100" : "opacity-0",
         ].join(" ")}
         style={{ transform: "translate3d(-9999px,-9999px,0)" }}
       />
