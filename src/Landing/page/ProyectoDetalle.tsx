@@ -282,7 +282,8 @@ function HScrollRow({
       className={"no-scrollbar overflow-x-auto overflow-y-hidden cursor-grab select-none w-full " + className}
       style={{ touchAction: "pan-y" }}
     >
-      <div className="min-w-full flex justify-center">
+      {/* ✅ ÚNICO CAMBIO: antes era justify-center y eso “perdía” el inicio cuando el mosaico es muy ancho */}
+      <div className="min-w-full flex justify-start">
         <div className="inline-flex w-max gap-10 items-stretch pr-1">
           {children}
         </div>

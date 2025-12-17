@@ -267,7 +267,7 @@ function FileDropzone({
   };
 
   return (
-    <div className="w-full" data-drag-ignore="true" data-cursor="ignore">
+    <div className="w-full" data-drag-ignore="true" data-cursor="ignore">1
       <label className="block text-[12px] tracking-[0.12em] text-neutral-500 mb-2 select-none">
         {label}
       </label>
