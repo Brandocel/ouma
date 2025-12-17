@@ -404,7 +404,7 @@ export default function ContactoModule() {
                 >
                   Instagram
                 </a>
-                <a
+                {/* <a
                   href="#"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -412,7 +412,7 @@ export default function ContactoModule() {
                   style={{ fontSize: "clamp(0.875rem, 1.04vw, 20px)" }}
                 >
                   Linkedin
-                </a>
+                </a> */}
               </div>
             </Accordion>
           </div>
