@@ -242,7 +242,7 @@ export default function Header() {
             >
               <div
                 className={[
-                  "w-[min(280px,80vw)] rounded-md bg-neutral-100 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]",
+                  "w-[min(280px,80vw)]  bg-neutral-100 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]",
                   "transition duration-180 ease-out will-change-transform",
                   visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-1 scale-[0.98]",
                 ].join(" ")}
