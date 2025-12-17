@@ -1,19 +1,32 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import InteractiveSvg from "../../common/svg/InteractiveSvg";
+
+/* ========= Helpers: evitar drag sobre inputs/select/etc ========= */
+const INTERACTIVE_SELECTOR =
+  'input, select, textarea, button, [role="button"], a, label, [contenteditable="true"], [data-drag-ignore="true"]';
+
+function isInteractiveTarget(e: Event) {
+  const t = e.target as HTMLElement | null;
+  if (!t) return false;
+  return !!t.closest(INTERACTIVE_SELECTOR);
+}
 
 /* ========= Floating Fields ========= */
 function FloatingInput({
   id,
+  name,
   label,
   type = "text",
   className = "",
+  required = false,
 }: {
   id: string;
+  name: string;
   label: string;
   type?: string;
   className?: string;
+  required?: boolean;
 }) {
-  // clases extra para type=number (sin spinners)
   const numberFix =
     type === "number"
       ? "[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -23,8 +36,10 @@ function FloatingInput({
     <div className={`relative ${className}`} data-cursor="ignore">
       <input
         id={id}
+        name={name}
         type={type}
         placeholder=" "
+        required={required}
         className={`
           peer w-full bg-transparent outline-none
           border-b border-neutral-300 py-2 text-[15px]
@@ -53,19 +68,22 @@ function FloatingInput({
 
 function FloatingSelect({
   id,
+  name,
   label,
   options,
   className = "",
+  required = false,
 }: {
   id: string;
+  name: string;
   label: string;
   options: { value: string; label: string }[];
   className?: string;
+  required?: boolean;
 }) {
   const [filled, setFilled] = useState(false);
   const selRef = useRef<HTMLSelectElement>(null);
 
-  // al montar, si tiene valor, mantener label arriba
   useEffect(() => {
     const el = selRef.current;
     if (!el) return;
@@ -77,9 +95,11 @@ function FloatingSelect({
       <select
         ref={selRef}
         id={id}
+        name={name}
         defaultValue=""
+        required={required}
         onChange={(e) => setFilled(e.currentTarget.value !== "")}
-        data-filled={filled ? "true" : "false"}  // ⬅️ el estado vive en el select
+        data-filled={filled ? "true" : "false"}
         className="
           peer w-full bg-transparent outline-none appearance-none
           border-b border-neutral-300 py-2 text-[15px] pr-6
@@ -95,9 +115,7 @@ function FloatingSelect({
         ))}
       </select>
 
-      <span className="pointer-events-none absolute right-0 bottom-2 text-neutral-400">
-        ▾
-      </span>
+      <span className="pointer-events-none absolute right-0 bottom-2 text-neutral-400">▾</span>
 
       <label
         htmlFor={id}
@@ -106,7 +124,7 @@ function FloatingSelect({
           text-[12px] tracking-[0.12em] text-neutral-500
           transition-all duration-200
           peer-focus:-top-3 peer-focus:text-[11px]
-          peer-data-[filled=true]:-top-3 peer-data-[filled=true]:text-[11px]   /* ⬅️ clave */
+          peer-data-[filled=true]:-top-3 peer-data-[filled=true]:text-[11px]
         "
       >
         {label}
@@ -123,6 +141,7 @@ function PhoneField() {
       {/* Prefijo */}
       <div className="relative">
         <select
+          name="telefono_prefijo"
           defaultValue="+52"
           className="
             peer w-full bg-transparent outline-none appearance-none
@@ -135,17 +154,14 @@ function PhoneField() {
           <option value="+1">+1</option>
           <option value="+34">+34</option>
         </select>
-        <span className="pointer-events-none absolute right-0 bottom-2 text-neutral-400">
-          ▾
-        </span>
-        <label className="pointer-events-none absolute left-0 top-2 text-[12px] opacity-0">
-          &nbsp;
-        </label>
+        <span className="pointer-events-none absolute right-0 bottom-2 text-neutral-400">▾</span>
+        <label className="pointer-events-none absolute left-0 top-2 text-[12px] opacity-0">&nbsp;</label>
       </div>
 
       {/* Número */}
       <div className="relative" data-filled={filledNumber ? "true" : "false"}>
         <input
+          name="telefono_numero"
           type="tel"
           placeholder=" "
           onChange={(e) => setFilledNumber(e.currentTarget.value.trim() !== "")}
@@ -173,13 +189,174 @@ function PhoneField() {
   );
 }
 
-// /* ========= Drag + Snap (ignorando inputs/selects/etc) ========= */
-// const INTERACTIVE_SELECTOR =
-//   'input, select, textarea, button, [role="button"], a, label, [contenteditable="true"]';
-// const isInteractiveTarget = (e: Event) => {
-//   const t = e.target as HTMLElement | null;
-//   return !!t && (!!t.closest(INTERACTIVE_SELECTOR) || !!t.closest("[data-drag-ignore]"));
-// };
+/* ========= File Dropzone (real con input file) ========= */
+function bytesToMb(bytes: number) {
+  return Math.round((bytes / (1024 * 1024)) * 100) / 100;
+}
+
+function FileDropzone({
+  label,
+  name,
+  accept,
+  multiple = true,
+  maxTotalBytes,
+}: {
+  label: string;
+  name: string;
+  accept: string;
+  multiple?: boolean;
+  maxTotalBytes: number;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState<string>("");
+
+  const totalBytes = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
+
+  const validate = (next: File[]) => {
+    const bytes = next.reduce((s, f) => s + f.size, 0);
+    if (bytes > maxTotalBytes) {
+      setError(`Peso excedido. Máximo ${bytesToMb(maxTotalBytes)} MB (actual ${bytesToMb(bytes)} MB).`);
+      return false;
+    }
+    setError("");
+    return true;
+  };
+
+  const applyFiles = (fileList: FileList | null) => {
+    if (!fileList) return;
+    const next = Array.from(fileList);
+
+    if (!multiple) {
+      const one = next.slice(0, 1);
+      if (!validate(one)) return;
+      setFiles(one);
+      return;
+    }
+
+    const merged = [...files, ...next];
+    if (!validate(merged)) return;
+    setFiles(merged);
+  };
+
+  const onDrop: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    applyFiles(e.dataTransfer.files);
+  };
+
+  const onDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const openPicker = () => inputRef.current?.click();
+
+  const removeFile = (idx: number) => {
+    const next = files.filter((_, i) => i !== idx);
+    setFiles(next);
+    validate(next);
+    // IMPORTANTE: para que el input refleje cambios
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  // Si el usuario borra manualmente desde picker (o selecciona de nuevo)
+  const onInputChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    setFiles([]); // reemplazamos para que sea predecible
+    applyFiles(e.target.files);
+  };
+
+  return (
+    <div className="w-full" data-drag-ignore="true" data-cursor="ignore">
+      <label className="block text-[12px] tracking-[0.12em] text-neutral-500 mb-2 select-none">
+        {label}
+      </label>
+
+      {/* Input real (oculto) */}
+      <input
+        ref={inputRef}
+        type="file"
+        name={name}
+        accept={accept}
+        multiple={multiple}
+        className="hidden"
+        onChange={onInputChange}
+      />
+
+      {/* Zona Drop */}
+      <div
+        onClick={openPicker}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        className="
+          w-full border border-neutral-300 bg-neutral-200/50
+          py-10 text-center text-neutral-600 select-none
+          hover:opacity-90 transition cursor-pointer
+        "
+      >
+        <div className="flex justify-center mb-3">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            width="28"
+            height="28"
+            fill="currentColor"
+            className="opacity-60"
+          >
+            <path
+              d="M19 18H6a4 4 0 0 1-.5-7.98A6 6 0 0 1 17.74 7.1 5 5 0 0 1 19 17.9V18Zm-7-7v4m0-4-2 2m2-2 2 2"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          </svg>
+        </div>
+        <div className="text-[13px] tracking-wide uppercase">HAZ CLICK O ARRASTRA LOS ARCHIVOS AQUÍ</div>
+        <div className="text-[11px] mt-1 opacity-60">
+          Peso máximo {bytesToMb(maxTotalBytes)} MB · {accept.replaceAll(".", "").toUpperCase()}
+        </div>
+      </div>
+
+      {/* Lista de archivos */}
+      {files.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="text-[12px] text-neutral-600">
+            Adjuntos: {files.length} · Total: {bytesToMb(totalBytes)} MB
+          </div>
+
+          <div className="space-y-2">
+            {files.map((f, i) => (
+              <div
+                key={`${f.name}-${i}`}
+                className="flex items-center justify-between gap-3 border border-neutral-200 bg-white/70 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <div className="text-[13px] text-neutral-900 truncate">{f.name}</div>
+                  <div className="text-[11px] text-neutral-500">{bytesToMb(f.size)} MB</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeFile(i);
+                  }}
+                  className="text-[12px] underline underline-offset-4 text-neutral-700 hover:opacity-70"
+                >
+                  Quitar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error && <div className="mt-2 text-[12px] text-red-600">{error}</div>}
+    </div>
+  );
+}
 
 export default function CareersModule() {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -194,7 +371,7 @@ export default function CareersModule() {
     requestAnimationFrame(() => (el.scrollLeft = 0));
   }, []);
 
-  // Drag + snap suave
+  // Drag + snap suave (y ahora IGNORA inputs y dropzone)
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -212,16 +389,19 @@ export default function CareersModule() {
       if (animId) cancelAnimationFrame(animId);
       animId = 0;
     };
+
     const animateScrollTo = (to: number, dur = 450) => {
       const prevSnap = el.style.scrollSnapType;
       el.style.scrollSnapType = "none";
       const from = el.scrollLeft;
       const delta = to - from;
+
       if (Math.abs(delta) < 1) {
         el.scrollLeft = to;
         el.style.scrollSnapType = prevSnap || "";
         return;
       }
+
       const start = performance.now();
       const step = (now: number) => {
         const t = Math.min(1, (now - start) / dur);
@@ -229,13 +409,15 @@ export default function CareersModule() {
         if (t < 1) animId = requestAnimationFrame(step);
         else el.style.scrollSnapType = prevSnap || "";
       };
+
       stopAnim();
       animId = requestAnimationFrame(step);
     };
 
     const onDown = (e: PointerEvent) => {
-      // if (isInteractiveTarget(e)) return; // no drag sobre inputs
+      if (isInteractiveTarget(e)) return; // ✅ clave
       (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+
       dragging = true;
       startX = e.clientX;
       startScroll = el.scrollLeft;
@@ -243,6 +425,7 @@ export default function CareersModule() {
       lastT = performance.now();
       v = 0;
       stopAnim();
+
       el.classList.add("cursor-grabbing");
       e.preventDefault();
     };
@@ -252,6 +435,7 @@ export default function CareersModule() {
       const now = performance.now();
       const dx = e.clientX - lastX;
       const dt = now - lastT || 16.7;
+
       el.scrollLeft = startScroll - (e.clientX - startX);
       v = dx * (16.7 / dt);
       lastX = e.clientX;
@@ -262,13 +446,16 @@ export default function CareersModule() {
     const onUp = (e: PointerEvent) => {
       if (!dragging) return;
       dragging = false;
+
       (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
       el.classList.remove("cursor-grabbing");
 
       const vw = vwRef.current;
       const halfway = vw / 2;
+
       const goingRight = v < -0.5;
       const goingLeft = v > 0.5;
+
       let target = 0;
       if (goingRight) target = vw;
       else if (goingLeft) target = 0;
@@ -292,14 +479,15 @@ export default function CareersModule() {
     };
   }, []);
 
-
   const [draggingScroll, setDraggingScroll] = useState(false);
   const dragStartX = useRef(0);
   const dragStartScroll = useRef(0);
 
-    const onScrollPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+  const onScrollPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (isInteractiveTarget(e.nativeEvent)) return; // ✅ clave
     const el = scrollerRef.current;
     if (!el) return;
+
     setDraggingScroll(true);
     dragStartX.current = e.clientX;
     dragStartScroll.current = el.scrollLeft;
@@ -311,6 +499,7 @@ export default function CareersModule() {
     if (!draggingScroll) return;
     const el = scrollerRef.current;
     if (!el) return;
+
     const dx = e.clientX - dragStartX.current;
     el.scrollLeft = dragStartScroll.current - dx;
     e.preventDefault();
@@ -320,6 +509,9 @@ export default function CareersModule() {
     setDraggingScroll(false);
     e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
+
+  // ✅ Redirección al terminar submit (opcional: mostrar mensaje al volver)
+  const sent = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("sent") : null;
 
   return (
     <main className="overflow-x-hidden">
@@ -340,92 +532,71 @@ export default function CareersModule() {
           <section className="w-[100svw] flex-none snap-start overflow-visible">
             <div
               className="mx-auto max-w-[1440px] px-4
-                          pt-[calc(var(--nav-offset-mobile)+56px)]
-                          md:pt-[calc(var(--nav-offset-desktop)+24px)]"
+                        pt-[calc(var(--nav-offset-mobile)+56px)]
+                        md:pt-[calc(var(--nav-offset-desktop)+24px)]"
             >
               <div className="grid md:grid-cols-[1fr_1fr] gap-8 md:gap-12 items-start py-12 md:py-16">
                 {/* Arte fijo */}
                 <div className="relative">
-                 <div
-                   className="overflow-hidden shrink-0"
-                   style={{ width: "clamp(300px,39.32vw,755px)", height: "clamp(200px,29.32vw,563px)" }}
-                   data-cursor="pointer"
-                 >
-                   <InteractiveSvg
-                   svgUrl="/Nosotros/logoouma.svg"
-                   className="w-full h-full bg-[url('/Nosotros/fondo.svg')] bg-cover bg-center"
-                   mode="reveal"
-                 
-                   /* ⬇️ Estado inicial */
-                   startPainted                       // ya dibujado desde el inicio
-                   autoPlayOnMount={false}            // no animes al montar
-                 
-                   /* ⬇️ Comportamiento en hover */
-                   drawOnHover                        // anima al pasar el mouse
-                   eraseThenDrawOnHover               // primero borra y luego dibuja
-                   drawDurationMs={1900}
-                   drawStaggerMs={45}
-                   brushWidthMultiplier={0.12}        // sube si quedan “huequitos” en el fill
-                 
-                   // /* ⬇️ Opcional: excluye guías grises del dibujo (sin tocar el SVG) */
-                   // drawSelector=":is(path,rect,circle,ellipse,polygon,polyline)
-                   //              :not([stroke='#BFBFBF']):not([fill='#BFBFBF'])
-                   //              :not([stroke='#CCCCCC']):not([fill='#CCCCCC'])"
-                 
-                   /* ⬇️ Zoom inicial y zoom-out durante el reveal */
-                   zoomOutOnReveal
-                   zoomFrom={3}                     // cuánto acercas de inicio
-                   zoomFocusPercent={{ x: 0.27, y: 0.001 }}  // foco (0..1) ≈ segunda “n”
-                   zoomDurationMs={1400}
-                   zoomEasing="cubic-bezier(.2,.7,0,1)"
-                 
-                 />
-                 
-                 
-                 </div>
+                  <div
+                    className="overflow-hidden shrink-0"
+                    style={{ width: "clamp(300px,39.32vw,755px)", height: "clamp(200px,29.32vw,563px)" }}
+                    data-cursor="pointer"
+                  >
+                    <InteractiveSvg
+                      svgUrl="/Nosotros/logoouma.svg"
+                      className="w-full h-full bg-[url('/Nosotros/fondo.svg')] bg-cover bg-center"
+                      mode="reveal"
+                      startPainted
+                      autoPlayOnMount={false}
+                      drawOnHover
+                      eraseThenDrawOnHover
+                      drawDurationMs={1900}
+                      drawStaggerMs={45}
+                      brushWidthMultiplier={0.12}
+                      zoomOutOnReveal
+                      zoomFrom={3}
+                      zoomFocusPercent={{ x: 0.27, y: 0.001 }}
+                      zoomDurationMs={1400}
+                      zoomEasing="cubic-bezier(.2,.7,0,1)"
+                    />
+                  </div>
                 </div>
 
                 {/* Copy */}
                 <div className="max-w-[640px] mx-auto md:mx-0">
                   <h1 className="leading-tight">
-                    <span className="text-[40px] md:text-[56px] font-medium text-neutral-400">
-                      Careers –{" "}
-                    </span>
-                    <span className="text-[40px] md:text-[56px] font-semibold text-neutral-900">
-                      Únete a OUMA
-                    </span>
+                    <span className="text-[40px] md:text-[56px] font-medium text-neutral-400">Careers – </span>
+                    <span className="text-[40px] md:text-[56px] font-semibold text-neutral-900">Únete a OUMA</span>
                   </h1>
 
                   <div className="mt-6 space-y-6 text-[20px] leading-[28px] text-black">
                     <p>
-                      En <strong className="font-semibold">OUMA</strong> creemos que cada proyecto es tan humano
-                      como quienes lo construyen. Nuestra filosofía se centra en la sensibilidad, la precisión y
-                      el compromiso, y buscamos colaboradores que compartan esa visión.
+                      En <strong className="font-semibold">OUMA</strong> creemos que cada proyecto es tan humano como
+                      quienes lo construyen. Nuestra filosofía se centra en la sensibilidad, la precisión y el
+                      compromiso, y buscamos colaboradores que compartan esa visión.
                     </p>
                     <p>
-                      Queremos rodearnos de personas que amen el diseño, que valoren el detalle y que comprendan
-                      que la arquitectura es más que espacio: es experiencia y acompañamiento. Profesionales que
-                      sepan escuchar, proponer y ejecutar con claridad; que encuentren equilibrio entre lo técnico
-                      y lo humano.
+                      Queremos rodearnos de personas que amen el diseño, que valoren el detalle y que comprendan que la
+                      arquitectura es más que espacio: es experiencia y acompañamiento. Profesionales que sepan escuchar,
+                      proponer y ejecutar con claridad; que encuentren equilibrio entre lo técnico y lo humano.
                     </p>
                     <p>
-                      En <strong className="font-semibold">OUMA</strong> no buscamos volumen, buscamos esencia.
-                      Si compartes nuestra convicción de que la arquitectura debe tener espacio &amp; alma, entonces
-                      aquí hay un lugar para ti.
+                      En <strong className="font-semibold">OUMA</strong> no buscamos volumen, buscamos esencia. Si
+                      compartes nuestra convicción de que la arquitectura debe tener espacio &amp; alma, entonces aquí
+                      hay un lugar para ti.
                     </p>
                   </div>
 
                   <div className="mt-6">
-                    <span className="inline-flex items-center gap-2 text-[20px] text-black select-none">
-                      Desliza →
-                    </span>
+                    <span className="inline-flex items-center gap-2 text-[20px] text-black select-none">Desliza →</span>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* ===== Panel 2 (Contacto con labels flotantes) ===== */}
+          {/* ===== Panel 2 (Formulario con adjuntos) ===== */}
           <section
             id="careers-form-panel"
             className="
@@ -433,8 +604,8 @@ export default function CareersModule() {
               scroll-mt-[calc(var(--nav-offset-mobile)+24px)]
               md:scroll-mt-[calc(var(--nav-offset-desktop)+24px)]
             "
-            data-drag-ignore
-            data-cursor="ignore"
+            data-drag-ignore="true"
+            data-cursor="off"
             style={{ cursor: "auto" }}
           >
             <div className="mx-auto max-w-[1440px] px-4 pt-[clamp(112px,10vw,120px)] pb-12 md:pb-16">
@@ -442,16 +613,37 @@ export default function CareersModule() {
                 Tus datos
               </h2>
 
-              <form className="mt-8 grid md:grid-cols-2 gap-10 md:gap-12">
-                <FloatingInput id="nombre" label="NOMBRE COMPLETO" />
-                <FloatingInput id="edad" label="EDAD" type="number" />
+              {sent === "1" && (
+                <div className="mt-4 text-[14px] text-green-700">
+                  ¡Listo! Se envió tu postulación. Si adjuntaste archivos, van incluidos.
+                </div>
+              )}
 
-                <FloatingInput id="correo" label="CORREO ELECTRÓNICO" type="email" />
+              {/* ✅ SUBMIT REAL (no AJAX) para que los adjuntos sean fiables */}
+              <form
+                action="https://formsubmit.co/Yahir@ouma.com.mx"
+                method="POST"
+                encType="multipart/form-data"
+                className="mt-8 grid md:grid-cols-2 gap-10 md:gap-12"
+                data-drag-ignore="true"
+              >
+                {/* Opciones FormSubmit */}
+                <input type="hidden" name="_subject" value="OUMA | Careers | Nueva postulación" />
+                <input type="hidden" name="_template" value="table" />
+                <input type="hidden" name="_captcha" value="false" />
+                <input type="hidden" name="_next" value={`${window.location.origin}/careers?sent=1`} />
+
+                <FloatingInput id="nombre" name="nombre" label="NOMBRE COMPLETO" required />
+                <FloatingInput id="edad" name="edad" label="EDAD" type="number" />
+
+                <FloatingInput id="correo" name="correo" label="CORREO ELECTRÓNICO" type="email" required />
                 <PhoneField />
 
                 <FloatingSelect
                   id="area"
+                  name="area"
                   label="ÁREA DE INTERÉS"
+                  required
                   options={[
                     { value: "arquitectura", label: "Arquitectura" },
                     { value: "construccion", label: "Construcción" },
@@ -463,47 +655,29 @@ export default function CareersModule() {
 
                 <div className="hidden md:block" />
 
-                {/* Dropzone (maqueta) */}
-                <div className="md:col-span-2" data-cursor="ignore">
-                  <label className="block text-[12px] tracking-[0.12em] text-neutral-500 mb-2 select-none">
-                    ADJUNTA TU CV Y PORTAFOLIO AQUÍ
-                  </label>
-                  <div className="w-full border border-neutral-300 bg-neutral-200/50 py-10 text-center text-neutral-600 select-none">
-                    <div className="flex justify-center mb-3">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        width="28"
-                        height="28"
-                        fill="currentColor"
-                        className="opacity-60"
-                      >
-                        <path
-                          d="M19 18H6a4 4 0 0 1-.5-7.98A6 6 0 0 1 17.74 7.1 5 5 0 0 1 19 17.9V18Zm-7-7v4m0-4-2 2m2-2 2 2"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          fill="none"
-                        />
-                      </svg>
-                    </div>
-                    <div className="text-[13px] tracking-wide uppercase">
-                      HAZ CLICK O ARRASTRA LOS ARCHIVOS AQUÍ
-                    </div>
-                    <div className="text-[11px] mt-1 opacity-60">Peso máximo 3 MB</div>
-                  </div>
+                <div className="md:col-span-2">
+                  <FileDropzone
+                    label="ADJUNTA TU CV Y PORTAFOLIO AQUÍ"
+                    name="attachment"
+                    maxTotalBytes={3 * 1024 * 1024} // 3MB
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    multiple
+                  />
                 </div>
 
                 <div className="md:col-span-2">
                   <button
-                    type="button"
+                    type="submit"
                     className="text-[15px] underline underline-offset-4 hover:opacity-80"
                     data-cursor="ignore"
                     style={{ cursor: "pointer" }}
                   >
                     SEND
                   </button>
+                </div>
+
+                <div className="md:col-span-2 text-[11px] text-neutral-500">
+                  Al enviar, aceptas que OUMA reciba tus datos y archivos para fines de reclutamiento.
                 </div>
               </form>
             </div>
@@ -513,4 +687,3 @@ export default function CareersModule() {
     </main>
   );
 }
-
