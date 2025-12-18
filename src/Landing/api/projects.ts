@@ -2,7 +2,7 @@
 export type Project = {
   slug: string;
   file: string;        // archivo principal (cover)
-  folder: string;      // ✅ carpeta del proyecto dentro de /assets/FotosInicio/
+  folder: string;      // carpeta del proyecto dentro de /assets/FotosInicio/
   title: string;
   place: string;
   year?: string;
@@ -10,6 +10,8 @@ export type Project = {
   categories?: string;
   description?: string;
 };
+
+
 
 // Base de proyectos
 export const PROJECTS: Project[] = [
@@ -67,7 +69,7 @@ export const PROJECTS: Project[] = [
 
   {
     slug: "casa-cascada-de-luz",
-    folder: "CASA_CASCADA_DE_LUZ", // ⚠️ pon aquí el nombre exacto de tu carpeta
+    folder: "RIO DANUBIO 12",
     file: "250429 - EXTERIOR FINAL 2.png",
     title: "Casa Cascada de Luz",
     place: "CANCÚN, QUINTANA ROO",
@@ -76,6 +78,48 @@ export const PROJECTS: Project[] = [
     categories: "DISEÑO ARQUITECTÓNICO / DISEÑO DE INTERIOR",
     description:
       "Diseñada para una familia en el corazón del Caribe mexicano, Casa Cascada nace como una interpretación contemporánea del trópico: cálida, ventilada y abierta, pero también introspectiva, sobria y bien contenida. Desde su fachada, la casa plantea un lenguaje de planos verticales en secuencia, como si el volumen se tejiera a partir de líneas que se desplazan y dan ritmo a la composición. Esta estrategia no solo organiza la arquitectura, sino que crea profundidad visual y otorga carácter desde el primer contacto. Esta vivienda convierte los elementos del trópico en lenguaje arquitectónico.",
+  },
+
+  /* ✅ ARREGLADO: slug debe coincidir con /proyectos/cycling-club */
+  {
+    slug: "cycling-club",
+    folder: "CYCLING CLUB",
+    file: "Cycling Club.png", // ✅ pon la portada así dentro del folder (o cambia al nombre real)
+    title: "Cycling Club",
+    place: "CANCÚN, QUINTANA ROO",
+    year: "2023",
+    brief: "Un refugio para ciclistas",
+    categories: "DISEÑO ARQUITECTÓNICO / DISEÑO DE INTERIOR",
+    description:
+      "Un refugio para ciclistas. Un espacio donde la ruta termina, pero la conversación continúa. Entre el aroma del café, el sonido de las herramientas y la luz del mediodía, nacen nuevas historias. Aquí se repara, se comparte y se celebra el viaje.",
+  },
+
+  /* ✅ NUEVO: Cocina Residencial — St. Regis Cancún */
+  {
+    slug: "cocina-residencial-st-regis-cancun",
+    folder: "ST. REGIS COCINAS_",
+    file: "Cocina Residencial — St. Regis Cancún.jpg", // ✅ cover.png (y opcional coverGrande.png)
+    title: "Cocina Residencial — St. Regis Cancún",
+    place: "CANCÚN, QUINTANA ROO",
+    year: "2025",
+    brief: "La precisión se vuelve materia",
+    categories: "DISEÑO DE INTERIOR",
+    description:
+      "La precisión se vuelve materia.\nCada corte exacto. Cada veta, elegida con intención.\nLa chapa natural envuelve los volúmenes con una continuidad natural, donde la tecnología y la sensibilidad se encuentran.\nUna cocina que habla en silencio: exacta, cálida y atemporal.",
+  },
+
+  /* ✅ NUEVO: Sian Habitats */
+  {
+    slug: "sian-habitats",
+    folder: "SIAN HABITATS",
+    file: "Sian Habitats.png", // ✅ cover.png (y opcional coverGrande.png)
+    title: "Sian Habitats",
+    place: "CANCÚN, QUINTANA ROO",
+    year: "2025",
+    brief: "Habitar en equilibrio",
+    categories: "DISEÑO ARQUITECTÓNICO",
+    description:
+      "Habitar en equilibrio.\nUn gesto ligero que se eleva del suelo y permite que el paisaje continúe su curso.\n\nLa estructura se abre al exterior, dejando que la luz, el aire y la vegetación entren sin permiso.\nLos límites se diluyen: adentro y afuera conviven en un mismo ritmo.\n\nSian Habitats no busca imponerse, sino convivir.\nUn refugio contemporáneo donde la arquitectura acompaña, protege y respira con quien la habita.",
   },
 ];
 

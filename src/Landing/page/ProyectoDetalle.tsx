@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { findProjectBySlug } from "../api/projects";
 
 /* Cargamos todas las fotos */
-const FOTOS = import.meta.glob("../../assets/FotosInicio/*", {
+const FOTOS = import.meta.glob("../../assets/FotosInicio/**/*", {
   eager: true,
   query: "?url",
 }) as Record<string, { default: string }>;
@@ -28,6 +28,29 @@ function resolveGrande(filename: string): string {
 function toSharedKey(anyName: string): string {
   const fn = fileName(anyName).toLowerCase();
   return fn.replace(/(?:[_\-\s]?grande)(?=\.[^.]+$)/i, "");
+}
+
+/* ✅ SOLO PARA EL MOSAICO: traer imágenes del folder del proyecto (sin romper lo demás) */
+function getProjectImages(folder: string) {
+  const normFolder = (folder || "").trim().toLowerCase();
+  if (!normFolder) return [];
+
+  const entries = Object.entries(FOTOS)
+    .filter(([p]) => {
+      const lp = p.toLowerCase().replace(/\\/g, "/");
+      return lp.includes("/fotosinicio/") && lp.includes(`/${normFolder}/`);
+    })
+    .map(([p, mod]) => ({
+      path: p.replace(/\\/g, "/"),
+      url: mod.default,
+      name: fileName(p),
+      key: toSharedKey(p),
+    }))
+    // quitamos variantes Grande para no duplicar
+    .filter((x) => !/(?:[_\-\s]?grande)(?=\.[^.]+$)/i.test(x.name))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
+
+  return entries.slice(0, 15);
 }
 
 export default function ProyectoDetalle() {
@@ -128,6 +151,43 @@ export default function ProyectoDetalle() {
   const sharedKey = toSharedKey(project.file);
   const description = (project.description || "").replace(/\n+/g, " ").trim();
 
+  /* ✅ SOLO MOSAICO: imágenes del folder (sin tocar lo demás) */
+  const images = getProjectImages((project as any).folder);
+  const coverKey = toSharedKey(project.file);
+  const extras = images.filter((x) => x.key !== coverKey);
+
+  /* ✅ SOLO MOSAICO: altura EXACTA igual a la imagen principal (ya renderizada) */
+  const [coverH, setCoverH] = useState<number>(0);
+  useLayoutEffect(() => {
+    const img = targetImgRef.current;
+    if (!img) return;
+
+    const measure = () => {
+      const r = img.getBoundingClientRect();
+      setCoverH(Math.round(r.height));
+    };
+
+    const rafMeasure = () => requestAnimationFrame(() => requestAnimationFrame(measure));
+
+    // 1) medir al montar
+    rafMeasure();
+
+    // 2) medir cuando cargue
+    const onLoad = () => rafMeasure();
+    img.addEventListener("load", onLoad);
+
+    // 3) medir si cambia tamaño por responsive/escala
+    const ro = new ResizeObserver(() => rafMeasure());
+    ro.observe(img);
+
+    window.addEventListener("resize", rafMeasure);
+    return () => {
+      img.removeEventListener("load", onLoad);
+      ro.disconnect();
+      window.removeEventListener("resize", rafMeasure);
+    };
+  }, [imgUrl, slug]);
+
   const handleBack = (ev?: React.MouseEvent) => {
     ev?.preventDefault();
     const img = targetImgRef.current;
@@ -174,7 +234,7 @@ export default function ProyectoDetalle() {
             </div>
           </aside>
 
-          {/* Imagen */}
+          {/* Imagen (MISMO DISEÑO) + ✅ SOLO MOSAICO A LA DERECHA (2 filas horizontal, intercalado) */}
           <figure
             className="inline-block shrink-0 align-top"
             data-cursor="drag"
@@ -183,21 +243,64 @@ export default function ProyectoDetalle() {
             data-fit-by-height
           >
             <div data-fit-inner>
-              <img
-                ref={targetImgRef}
-                src={imgUrl}
-                alt={project.title}
-                className="block h-auto w-auto select-none"
-                draggable={false}
-                decoding="async"
-                loading="eager"
-                fetchPriority="high"
-                style={{
-                  maxHeight: "min(78vh, calc(var(--useful-h, 100vh) * 0.78))",
-                  imageRendering: "auto",
-                  visibility: waitingForOverlay ? "hidden" : "visible",
-                }}
-              />
+              <div className="flex items-start gap-6">
+                {/* ✅ TU IMAGEN PRINCIPAL INTACTA */}
+                <img
+                  ref={targetImgRef}
+                  src={imgUrl}
+                  alt={project.title}
+                  className="block h-auto w-auto select-none"
+                  draggable={false}
+                  decoding="async"
+                  loading="eager"
+                  fetchPriority="high"
+                  style={{
+                    maxHeight: "min(78vh, calc(var(--useful-h, 100vh) * 0.78))",
+                    imageRendering: "auto",
+                    visibility: waitingForOverlay ? "hidden" : "visible",
+                  }}
+                />
+
+                {/* ✅ MOSAICO: misma altura de la principal, 2 filas y se va construyendo horizontal */}
+                {extras.length > 0 && (
+                  <div
+                    className="overflow-hidden"
+                    style={{
+                      height: coverH ? `${coverH}px` : undefined,
+                      maxHeight: coverH ? `${coverH}px` : undefined,
+                      // si aún no mide, evita saltos feos
+                      minHeight: coverH ? `${coverH}px` : undefined,
+                    }}
+                  >
+                    <div className="no-scrollbar overflow-x-auto overflow-y-hidden h-full">
+                      <div
+                        className="grid gap-3 h-full"
+                        style={{
+                          gridTemplateRows: "repeat(2, 1fr)",
+                          gridAutoFlow: "column",
+                          gridAutoColumns: "260px",
+                          width: "max-content",
+                          alignItems: "stretch",
+                        }}
+                      >
+                        {extras.map((img, i) => (
+                          <div key={img.path + i} className="overflow-hidden bg-[#F2F2F2] h-full">
+                            <img
+                              src={img.url}
+                              alt={`mosaico-${i + 1}`}
+                              className="w-full h-full object-cover select-none"
+                              draggable={false}
+                              loading="lazy"
+                              decoding="async"
+                              style={{ imageRendering: "auto" }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </figure>
 
