@@ -120,45 +120,34 @@ export default function DesignSection() {
 
   return (
     <main ref={sectionRef} className="bg-neutral-50 text-neutral-900 flex flex-col">
-      {/* Volver sin subrayado ni outline */}
-      <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 pt-6 md:pt-10">
-       
-      </div>
-
-      {/* Contenido con scroll horizontal */}
-      <div className="mx-auto w-full max-w-[1440px] px-4 md:px-6 pt-4 md:pt-6">
+      {/* Desktop: contenido con scroll horizontal (sin cambios) */}
+      <div className="hidden md:block mx-auto w-full max-w-[1440px] px-4 md:px-6 pt-4 md:pt-6">
         <div
           ref={scrollerRef}
           className="no-scrollbar overflow-x-auto overflow-y-hidden select-none cursor-grab"
           style={{ touchAction: "pan-y" }}
         >
-          
           <div
             className="grid items-start gap-x-6 lg:gap-x-10 gap-y-6 pr-1"
             style={{
-              // ancho extra para asegurar scroll
               minWidth: "1720px",
-              // columnas: texto | imagen grande | columna derecha
               gridTemplateColumns: "320px 820px 560px",
               paddingTop: "clamp(8px, 2.2vw, 22px)",
               paddingBottom: "clamp(12px, 3vw, 28px)",
               margin: "0 auto",
             }}
           >
-            
             {/* Texto (izquierda) */}
             <div className="justify-self-start text-right">
-               <button
-          onMouseDown={(e) => e.preventDefault()} // quita focus outline al presionar
-          onClick={() => navigate("/servicios")}
-          className="text-[12px] leading-none text-neutral-400 hover:text-neutral-700 no-underline outline-none focus:outline-none focus:ring-0 active:outline-none"
-          style={{ textDecoration: "none" }}
-        >
-          ← Volver
-        </button>
-              <div className="text-[#A6A6A6] font-medium text-[clamp(18px,2.1vw,28px)] leading-none mb-1">
-                01
-              </div>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => navigate("/servicios")}
+                className="text-[12px] leading-none text-neutral-400 hover:text-neutral-700 no-underline outline-none focus:outline-none focus:ring-0 active:outline-none"
+                style={{ textDecoration: "none" }}
+              >
+                ← Volver
+              </button>
+              <div className="text-[#A6A6A6] font-medium text-[clamp(18px,2.1vw,28px)] leading-none mb-1">01</div>
               <h2 className="font-medium text-[#0A0A0A] leading-[1.05]">
                 <span className="block text-[clamp(22px,2.4vw,36px)]">Diseño</span>
                 <span className="block text-[clamp(22px,2.4vw,36px)]">Arquitectónico</span>
@@ -178,56 +167,78 @@ export default function DesignSection() {
               </p>
             </div>
 
-            {/* Imagen principal: MÁS PANORÁMICA (menos alta) */}
-            <div
-              className="relative group overflow-hidden select-none"
-              // 21/10 reduce aprox 24% de altura respecto a 16/10
-              style={{ aspectRatio: "21 / 10" }}
-              data-cursor="drag"
-              data-cursor-size="92"
-              data-cursor-label="Arrastra"
-            >
-              <img
-                src={ImgMain}
-                alt="principal"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] will-change-transform"
-                draggable={false}
-                loading="lazy"
-                decoding="async"
-              />
+            {/* Imagen principal */}
+            <div className="relative group overflow-hidden select-none" style={{ aspectRatio: "21 / 10" }} data-cursor="drag" data-cursor-size="92" data-cursor-label="Arrastra">
+              <img src={ImgMain} alt="principal" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03] will-change-transform" draggable={false} loading="lazy" decoding="async" />
             </div>
 
-            {/* Columna derecha: dos arriba + una ancha abajo */}
+            {/* Columna derecha */}
             <div className="grid gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="overflow-hidden">
-                  <img
-                    src={ImgTopRight}
-                    alt="arriba"
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                    loading="lazy"
-                    decoding="async"
-                    style={{ aspectRatio: "16 / 10" }}
-                  />
+                  <img src={ImgTopRight} alt="arriba" className="w-full h-full object-cover" draggable={false} loading="lazy" decoding="async" style={{ aspectRatio: "16 / 10" }} />
                 </div>
                 <div className="overflow-hidden">
-                  <img
-                    src={ImgMidRight}
-                    alt="medio"
-                    className="w-full h-full object-cover"
-                    draggable={false}
-                    loading="lazy"
-                    decoding="async"
-                    style={{ aspectRatio: "16 / 10" }}
-                  />
+                  <img src={ImgMidRight} alt="medio" className="w-full h-full object-cover" draggable={false} loading="lazy" decoding="async" style={{ aspectRatio: "16 / 10" }} />
                 </div>
               </div>
-
-              {/* Inferior ancha: mostrar completa sin pixelación */}
               <WideContain src={ImgWideRight} alt="ancha" />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile: scroll vertical con altura útil y momentum */}
+      <div
+        className="md:hidden w-full"
+        style={{
+          height: "calc(100svh - 149px - 69px)", // igual aproximación que arriba (Header + Footer)
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+        }}
+      >
+        <div className="mx-auto w-full max-w-[1440px] px-4 pt-4 flex flex-col gap-4">
+          {/* Volver */}
+          <div>
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => navigate("/servicios")}
+              className="text-[12px] leading-none text-neutral-500 hover:text-neutral-800"
+            >
+              ← Volver
+            </button>
+          </div>
+
+          {/* Título y número */}
+          <div>
+            <div className="text-[#A6A6A6] font-medium text-[18px] leading-none mb-1">01</div>
+            <h2 className="font-medium text-[#0A0A0A] leading-tight text-[24px]">Diseño Arquitectónico</h2>
+            <p className="font-medium text-[#0A0A0A] mt-2 text-[14px] leading-[1.4]">
+              Desarrollamos proyectos arquitectónicos desde la conceptualización hasta el detalle ejecutivo. Cada diseño nace de la empatía y se plasma con claridad, buscando siempre la armonía entre forma, función y alma.
+            </p>
+          </div>
+
+          {/* Imagen principal */}
+          <div>
+            <img src={ImgMain} alt="principal" className="w-full h-auto object-cover select-none" draggable={false} loading="lazy" decoding="async" />
+          </div>
+
+          {/* Imágenes derecha, en una grilla vertical */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="overflow-hidden">
+              <img src={ImgTopRight} alt="arriba" className="w-full h-auto object-cover" draggable={false} loading="lazy" decoding="async" />
+            </div>
+            <div className="overflow-hidden">
+              <img src={ImgMidRight} alt="medio" className="w-full h-auto object-cover" draggable={false} loading="lazy" decoding="async" />
+            </div>
+          </div>
+
+          {/* Imagen ancha completa */}
+          <WideContain src={ImgWideRight} alt="ancha" />
+
+          {/* Colchón inferior */}
+          <div className="pb-2" />
         </div>
       </div>
     </main>

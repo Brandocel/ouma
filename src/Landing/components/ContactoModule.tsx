@@ -106,6 +106,7 @@ function Accordion({
 export default function ContactoModule() {
   const sectionRef = useRef<HTMLElement>(null);
   const [showSocial, setShowSocial] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   // Estados del formulario
   const [formData, setFormData] = useState({ nombre: "", email: "", mensaje: "" });
@@ -196,6 +197,15 @@ export default function ContactoModule() {
     return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
+  // Detectar desktop para no forzar min-height en pantallas grandes (evita scroll extra)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => setIsDesktop(e.matches);
+    handler(mq);
+    mq.addEventListener("change", handler as any);
+    return () => mq.removeEventListener("change", handler as any);
+  }, []);
+
   return (
     <section ref={sectionRef} className="bg-neutral-50">
       <div
@@ -220,24 +230,29 @@ export default function ContactoModule() {
           Contacto
         </h1>
 
-        {/* Grid de 2 columnas: Formulario | Acordeones */}
+        {/* Layout: Formulario | Acordeones (stack en móvil) */}
         <div
-          className="flex gap-x-[clamp(2rem,13.85vw,266px)]"
-          style={{ width: "clamp(300px, 66.30vw, 1273px)" }}
+          className="flex flex-col md:flex-row gap-y-12 md:gap-y-0 gap-x-[clamp(2rem,13.85vw,266px)]"
+          style={{
+            width: "clamp(300px, 66.30vw, 1273px)",
+            ...(isDesktop
+              ? {}
+              : { minHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))" }),
+          }}
         >
           {/* Columna 1: Formulario */}
           <form
             onSubmit={handleSubmit}
+            className="md:h-[clamp(200px,23.54vw,452px)] mb-[clamp(2rem,4.17vw,80px)] md:mb-0"
             style={{
               width: "clamp(300px, 47.71vw, 916px)",
-              height: "clamp(200px, 23.54vw, 452px)",
               flexShrink: 0,
             }}
           >
             {/* NOMBRE y EMAIL */}
-            <div className="flex gap-x-[clamp(1rem,2.97vw,57px)] mb-[clamp(2rem,4.17vw,80px)]">
+            <div className="flex flex-col md:flex-row gap-y-6 md:gap-y-0 gap-x-[clamp(1rem,2.97vw,57px)] mb-[clamp(2rem,4.17vw,80px)]">
               {/* NOMBRE */}
-              <div style={{ flex: "0 0 clamp(150px,22.40vw,430px)" }}>
+              <div className="basis-full md:basis-[clamp(150px,22.40vw,430px)]">
                 <input
                   type="text"
                   name="nombre"
@@ -261,7 +276,7 @@ export default function ContactoModule() {
               </div>
 
               {/* EMAIL */}
-              <div style={{ flex: "0 0 clamp(150px,22.40vw,430px)" }}>
+              <div className="basis-full md:basis-[clamp(150px,22.40vw,430px)]">
                 <input
                   type="email"
                   name="email"
@@ -340,11 +355,8 @@ export default function ContactoModule() {
 
           {/* Columna 2: OFICIES + SOCIAL (acordeones) */}
           <div
-            style={{
-              width: "clamp(80px, 4.74vw, 91px)",
-              height: "clamp(200px, 23.54vw, 452px)",
-              flexShrink: 0,
-            }}
+            className="mt-12 md:mt-0 md:w-[clamp(80px,4.74vw,91px)] md:h-[clamp(200px,23.54vw,452px)]"
+            style={{ flexShrink: 0 }}
           >
             {/* OFICIES */}
             {/* <Accordion

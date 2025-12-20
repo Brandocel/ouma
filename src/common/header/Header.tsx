@@ -20,7 +20,7 @@ const MENU = [
   { label: "CONTACTO", to: "/contacto" },
 ];
 
-/** Barra de categorías (igual) */
+/** Barra de categorías (solo desktop) */
 function CatsBar({ path }: { path: string }) {
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -54,53 +54,16 @@ function CatsBar({ path }: { path: string }) {
           </NavLink>
         ))}
       </nav>
-
-      <nav className="md:hidden flex flex-col items-center gap-1 text-[10px] uppercase">
-        <div className="flex gap-3">
-          {CATS.slice(0, 3).map((cat, idx) => (
-            <NavLink
-              key={cat.label + "-m1"}
-              to={cat.to}
-              data-cursor="link"
-              className={({ isActive }) =>
-                [
-                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1",
-                  "transition-[opacity,transform,color] duration-300 ease-out",
-                  isActive ? "font-semibold text-neutral-900" : "text-neutral-400 hover:text-neutral-700",
-                ].join(" ")
-              }
-              style={{ transitionDelay: inView ? `${idx * 35}ms` : "0ms" }}
-            >
-              {cat.label}
-            </NavLink>
-          ))}
-        </div>
-        <div className="flex gap-3">
-          {CATS.slice(3).map((cat, idx) => (
-            <NavLink
-              key={cat.label + "-m2"}
-              to={cat.to}
-              data-cursor="link"
-              className={({ isActive }) =>
-                [
-                  inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1",
-                  "transition-[opacity,transform,color] duration-300 ease-out",
-                  isActive ? "font-semibold text-neutral-900" : "text-neutral-400 hover:text-neutral-700",
-                ].join(" ")
-              }
-              style={{ transitionDelay: inView ? `${(idx + 3) * 35}ms` : "0ms" }}
-            >
-              {cat.label}
-            </NavLink>
-          ))}
-        </div>
-      </nav>
     </div>
   );
 }
 
 export default function Header() {
   const [openMenu, setOpenMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeCat, setActiveCat] = useState<string>("/");
+  const [openCatsMenu, setOpenCatsMenu] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
 
   // ref al botón para posicionar el popover
@@ -111,6 +74,21 @@ export default function Header() {
     width: 0,
     height: 0,
   });
+
+  // Focus en el input cuando se abre el search en móvil
+  useEffect(() => {
+    if (searchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [searchOpen]);
+
+  // Actualizar categoría activa según ruta
+  useEffect(() => {
+    const active = CATS.find((cat) => cat.to === location.pathname);
+    if (active) {
+      setActiveCat(active.to);
+    }
+  }, [location.pathname]);
 
   // cerrar al navegar y con ESC
   useEffect(() => { setOpenMenu(false); }, [location.pathname]);
@@ -200,7 +178,8 @@ export default function Header() {
 
             {/* DERECHA */}
             <div className="h-9 flex items-center justify-end">
-              <div className="flex w-full max-w-[240px] items-center gap-2">
+              {/* Desktop: search input siempre visible */}
+              <div className="hidden md:flex w-full max-w-[240px] items-center gap-2">
                 <input
                   data-cursor="link"
                   type="text"
@@ -212,11 +191,71 @@ export default function Header() {
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
+
+              {/* Mobile: solo icono que abre/cierra el search */}
+              <div className="md:hidden">
+                <button
+                  data-cursor="link"
+                  aria-label={searchOpen ? "Cerrar búsqueda" : "Abrir búsqueda"}
+                  aria-expanded={searchOpen}
+                  onClick={() => setSearchOpen(!searchOpen)}
+                  className="p-1"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" className="text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* CATEGORÍAS */}
-          {showCategories && <CatsBar path={location.pathname} />}
+          {showCategories && (
+            <>
+              {/* Desktop: mostrar todas las categorías */}
+              <CatsBar path={location.pathname} />
+
+              {/* Mobile: menú desplegable suave */}
+              <div className="md:hidden mt-4 flex flex-col items-center relative">
+                <button
+                  onClick={() => setOpenCatsMenu(!openCatsMenu)}
+                  className="text-[13px] uppercase font-medium text-neutral-700 pb-1 border-b-2 border-transparent hover:border-neutral-400 transition-colors duration-200"
+                >
+                  {CATS.find((c) => c.to === activeCat)?.label || "CATEGORÍAS"}
+                </button>
+
+                {/* Dropdown menu */}
+                {openCatsMenu && (
+                  <div
+                    className="absolute top-full mt-3 z-[20000] min-w-max py-2 bg-white/100 opacity-100 backdrop-blur-0 rounded-md shadow-md ring-1 ring-neutral-200"
+                    style={{ backgroundColor: "#ffffff" }}
+                  >
+                    {CATS.map((cat) => (
+                      <NavLink
+                        key={cat.to}
+                        to={cat.to}
+                        onClick={() => {
+                          setActiveCat(cat.to);
+                          setOpenCatsMenu(false);
+                        }}
+                        className={({ isActive }) =>
+                          [
+                            "block px-4 py-2 text-[12px] uppercase font-medium transition-colors duration-150",
+                            isActive || activeCat === cat.to
+                              ? "text-neutral-900 bg-neutral-50"
+                              : "text-neutral-600 hover:text-neutral-800 hover:bg-neutral-100",
+                          ].join(" ")
+                        }
+                      >
+                        {cat.label}
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -228,8 +267,8 @@ export default function Header() {
             <div
               onClick={() => setOpenMenu(false)}
               className={[
-                "fixed inset-0 z-[11990] transition-opacity duration-180",
-                visible ? "opacity-30 bg-black" : "opacity-0",
+                "fixed inset-0 z-[11990] transition-opacity duration-300",
+                visible ? "opacity-30 bg-black" : "opacity-0 pointer-events-none",
               ].join(" ")}
             />
 
@@ -243,8 +282,8 @@ export default function Header() {
               <div
                 className={[
                   "w-[min(280px,80vw)]  bg-neutral-100 px-4 py-3 shadow-[0_10px_30px_rgba(0,0,0,0.08)]",
-                  "transition duration-180 ease-out will-change-transform",
-                  visible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-1 scale-[0.98]",
+                  "transition duration-300 ease-out will-change-transform",
+                  visible ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-4 scale-[0.95]",
                 ].join(" ")}
                 style={{ background: "rgba(243,243,243,0.96)" }}
               >
@@ -276,6 +315,41 @@ export default function Header() {
           document.body
         )}
       {/* === /POPOVER === */}
+
+      {/* === MOBILE SEARCH POPOVER === */}
+      {searchOpen &&
+        createPortal(
+          <>
+            <div
+              onClick={() => setSearchOpen(false)}
+              className="fixed inset-0 z-[11990] md:hidden bg-black/20"
+            />
+            <div className="fixed top-0 right-0 h-screen w-full max-w-xs z-[12000] md:hidden bg-white/95 backdrop-blur-md animate-in slide-in-from-right-96 duration-300 ease-out pt-6 px-4 shadow-lg">
+              <div className="flex items-center gap-3 bg-neutral-100 rounded-lg px-4 py-3">
+                <input
+                  ref={searchInputRef}
+                  data-cursor="link"
+                  type="text"
+                  placeholder="BUSCAR"
+                  className="flex-1 bg-transparent outline-none placeholder:text-neutral-500 text-[14px] font-medium"
+                  onKeyDown={(e) => e.key === "Escape" && setSearchOpen(false)}
+                />
+                <button
+                  onClick={() => setSearchOpen(false)}
+                  className="p-1 hover:bg-neutral-200 rounded transition-colors"
+                  aria-label="Cerrar búsqueda"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" className="text-neutral-700" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
+      {/* === /MOBILE SEARCH POPOVER === */}
     </header>
   );
 }

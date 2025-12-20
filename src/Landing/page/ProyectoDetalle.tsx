@@ -209,8 +209,8 @@ export default function ProyectoDetalle() {
         overflow: "hidden",
       }}
     >
-      {/* Capa centradora */}
-      <div className="h-full w-full grid place-items-center">
+      {/* Desktop horizontal (sin cambios) */}
+      <div className="h-full w-full hidden md:grid place-items-center">
         <HScrollRow>
           {/* Columna izquierda */}
           <aside className="shrink-0 w-[240px] md:w-[260px] pr-4 text-right" data-fit-by-height>
@@ -322,6 +322,74 @@ export default function ProyectoDetalle() {
             </div>
           </article>
         </HScrollRow>
+      </div>
+
+      {/* Mobile vertical scroll */}
+      <div className="h-full w-full md:hidden overflow-y-auto">
+        <div className="flex flex-col gap-6 px-1 py-4">
+          {/* Encabezado móvil: volver + título */}
+          <div className="px-1">
+            <button onClick={handleBack} className="text-neutral-500 hover:text-neutral-800 text-[13px]">← Volver</button>
+            <h1 className="mt-2 font-medium text-[20px] leading-[1.2] text-neutral-900">{project.title}</h1>
+            <div className="text-[12px] leading-[1.2] text-neutral-500">{project.place}</div>
+            {project.year && <div className="text-[12px] leading-[1.2] text-neutral-500">{project.year}</div>}
+          </div>
+
+          {/* Imagen principal */}
+          <div className="px-1">
+            <img
+              ref={targetImgRef}
+              src={imgUrl}
+              alt={project.title}
+              className="block w-full h-auto select-none"
+              draggable={false}
+              decoding="async"
+              loading="eager"
+              fetchPriority="high"
+              style={{
+                imageRendering: "auto",
+                visibility: waitingForOverlay ? "hidden" : "visible",
+              }}
+            />
+          </div>
+
+          {/* Mosaico extra en columna (scroll vertical) */}
+          {extras.length > 0 && (
+            <div className="px-1">
+              <div className="grid grid-cols-2 gap-3">
+                {extras.map((img, i) => (
+                  <div key={img.path + i} className="overflow-hidden bg-[#F2F2F2]">
+                    <img
+                      src={img.url}
+                      alt={`mosaico-${i + 1}`}
+                      className="w-full h-auto object-cover select-none"
+                      draggable={false}
+                      loading="lazy"
+                      decoding="async"
+                      style={{ imageRendering: "auto" }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Texto y metadatos al final */}
+          <div className="px-1">
+            <p className="font-medium text-neutral-900 text-[15px] leading-[1.35] tracking-normal antialiased">
+              {description}
+            </p>
+
+            <div className="pt-8 select-none">
+              <div className="font-medium text-neutral-900 text-[15px] leading-[1.25]">
+                {project.brief ?? "Desarrollo de habitacional frente al mar"}
+              </div>
+              <div className="text-[#A6A6A6] text-[13px] leading-[1.25] uppercase tracking-[0.02em]">
+                {project.categories ?? "DISEÑO ARQUITECTÓNICO / DISEÑO DE INTERIOR"}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );

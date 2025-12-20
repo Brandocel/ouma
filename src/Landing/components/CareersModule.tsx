@@ -361,6 +361,7 @@ function FileDropzone({
 export default function CareersModule() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const vwRef = useRef<number>(window.innerWidth);
+  const [availableH, setAvailableH] = useState<number | null>(null);
 
   // Arranca en panel 1
   useLayoutEffect(() => {
@@ -369,6 +370,39 @@ export default function CareersModule() {
     vwRef.current = window.innerWidth;
     el.scrollLeft = 0;
     requestAnimationFrame(() => (el.scrollLeft = 0));
+  }, []);
+
+  // Altura disponible en desktop: viewport menos header y footer, para evitar scroll vertical al footer
+  useEffect(() => {
+    const compute = () => {
+      if (window.innerWidth < 1024) {
+        setAvailableH(null);
+        return;
+      }
+
+      const header = document.querySelector("header") as HTMLElement | null;
+      const footer = document.querySelector("footer") as HTMLElement | null;
+      const hH = header?.getBoundingClientRect().height ?? 0;
+      const fH = footer?.getBoundingClientRect().height ?? 0;
+      const vh = Math.max(window.innerHeight, document.documentElement.clientHeight);
+      const usable = Math.max(0, Math.round(vh - hH - fH));
+
+      setAvailableH((prev) => (prev === usable ? prev : usable || null));
+    };
+
+    compute();
+
+    const ro = new ResizeObserver(compute);
+    const header = document.querySelector("header") as HTMLElement | null;
+    const footer = document.querySelector("footer") as HTMLElement | null;
+    header && ro.observe(header);
+    footer && ro.observe(footer);
+
+    window.addEventListener("resize", compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", compute);
+    };
   }, []);
 
   // Drag + snap suave (y ahora IGNORA inputs y dropzone)
@@ -515,13 +549,125 @@ export default function CareersModule() {
 
   return (
     <main className="overflow-x-hidden">
+      {/* MOBILE STACKED LAYOUT */}
+      <div className="md:hidden">
+        {/* Panel 1: Arte + copy */}
+        <section className="px-4 pt-24 pb-8">
+          <div className="mx-auto max-w-[1440px] grid gap-8 items-start">
+            <div className="relative">
+              <div className="overflow-hidden w-full max-w-[720px] mx-auto" data-cursor="pointer">
+                <InteractiveSvg
+                  svgUrl="/Nosotros/logoouma.svg"
+                  className="w-full h-[320px] bg-[url('/Nosotros/fondo.svg')] bg-cover bg-center"
+                  mode="reveal"
+                  startPainted
+                  autoPlayOnMount={false}
+                  drawOnHover
+                  eraseThenDrawOnHover
+                  drawDurationMs={1900}
+                  drawStaggerMs={45}
+                  brushWidthMultiplier={0.12}
+                  zoomOutOnReveal
+                  zoomFrom={3}
+                  zoomFocusPercent={{ x: 0.27, y: 0.001 }}
+                  zoomDurationMs={1400}
+                  zoomEasing="cubic-bezier(.2,.7,0,1)"
+                />
+              </div>
+            </div>
+            <div className="max-w-[640px] mx-auto">
+              <h1 className="leading-tight text-center">
+                <span className="text-[40px] font-medium text-neutral-400">Careers – </span>
+                <span className="text-[40px] font-semibold text-neutral-900">Únete a OUMA</span>
+              </h1>
+              <div className="mt-6 space-y-6 text-[18px] leading-[26px] text-black">
+                <p>
+                  En <strong className="font-semibold">OUMA</strong> creemos que cada proyecto es tan humano como
+                  quienes lo construyen. Nuestra filosofía se centra en la sensibilidad, la precisión y el
+                  compromiso, y buscamos colaboradores que compartan esa visión.
+                </p>
+                <p>
+                  Queremos rodearnos de personas que amen el diseño, que valoren el detalle y que comprendan que la
+                  arquitectura es más que espacio: es experiencia y acompañamiento. Profesionales que sepan escuchar,
+                  proponer y ejecutar con claridad; que encuentren equilibrio entre lo técnico y lo humano.
+                </p>
+                <p>
+                  En <strong className="font-semibold">OUMA</strong> no buscamos volumen, buscamos esencia. Si
+                  compartes nuestra convicción de que la arquitectura debe tener espacio &amp; alma, entonces aquí
+                  hay un lugar para ti.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Panel 2: Formulario */}
+        <section className="px-4 pb-16">
+          <div className="mx-auto max-w-[1440px] mt-10">
+            <h2 className="text-[40px] leading-[0.95] font-semibold tracking-tight text-black mb-6">Tus datos</h2>
+
+            <form
+              action="https://formsubmit.co/Yahir@ouma.com.mx"
+              method="POST"
+              encType="multipart/form-data"
+              className="grid gap-8"
+              data-drag-ignore="true"
+            >
+              <input type="hidden" name="_subject" value="OUMA | Careers | Nueva postulación" />
+              <input type="hidden" name="_template" value="table" />
+              <input type="hidden" name="_captcha" value="false" />
+              <input type="hidden" name="_next" value={`${window.location.origin}/careers?sent=1`} />
+
+              <FloatingInput id="nombre_m" name="nombre" label="NOMBRE COMPLETO" required />
+              <FloatingInput id="edad_m" name="edad" label="EDAD" type="number" />
+              <FloatingInput id="correo_m" name="correo" label="CORREO ELECTRÓNICO" type="email" required />
+              <PhoneField />
+
+              <FloatingSelect
+                id="area_m"
+                name="area"
+                label="ÁREA DE INTERÉS"
+                required
+                options={[
+                  { value: "arquitectura", label: "Arquitectura" },
+                  { value: "construccion", label: "Construcción" },
+                  { value: "interiorismo", label: "Interiorismo" },
+                  { value: "bim", label: "BIM System" },
+                  { value: "productos", label: "Productos" },
+                ]}
+              />
+
+              <FileDropzone
+                label="ADJUNTA TU CV Y PORTAFOLIO AQUÍ"
+                name="attachment"
+                maxTotalBytes={3 * 1024 * 1024}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                multiple
+              />
+
+              <button type="submit" className="text-[15px] underline underline-offset-4 hover:opacity-80" data-cursor="ignore" style={{ cursor: "pointer" }}>
+                SEND
+              </button>
+
+              <div className="text-[11px] text-neutral-500">
+                Al enviar, aceptas que OUMA reciba tus datos y archivos para fines de reclutamiento.
+              </div>
+            </form>
+          </div>
+        </section>
+      </div>
+
       {/* DESKTOP SCROLLER */}
       <div
         ref={scrollerRef}
         className={`hidden md:block w-full overflow-x-auto overflow-y-hidden select-none overscroll-x-contain [&::-webkit-scrollbar]:hidden ${
           draggingScroll ? "cursor-grabbing" : "cursor-grab"
         }`}
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        style={{
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          height: availableH ? `${availableH}px` : undefined,
+        }}
         onPointerDown={onScrollPointerDown}
         onPointerMove={onScrollPointerMove}
         onPointerUp={onScrollPointerUp}
@@ -529,7 +675,10 @@ export default function CareersModule() {
       >
         <div className="flex w-[200svw]">
           {/* ===== Panel 1 ===== */}
-          <section className="w-[100svw] flex-none snap-start overflow-visible">
+          <section
+            className="w-[100svw] flex-none snap-start overflow-visible"
+            style={availableH ? { minHeight: `${availableH}px` } : undefined}
+          >
             <div
               className="mx-auto max-w-[1440px] px-4
                         pt-[calc(var(--nav-offset-mobile)+56px)]
@@ -606,7 +755,7 @@ export default function CareersModule() {
             "
             data-drag-ignore="true"
             data-cursor="off"
-            style={{ cursor: "auto" }}
+            style={availableH ? { cursor: "auto", minHeight: `${availableH}px` } : { cursor: "auto" }}
           >
             <div className="mx-auto max-w-[1440px] px-4 pt-[clamp(112px,10vw,120px)] pb-12 md:pb-16">
               <h2 className="text-[48px] md:text-[72px] leading-[0.95] font-semibold tracking-tight text-black">

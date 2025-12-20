@@ -325,6 +325,147 @@ Trabajamos con Rational en el diseño e instalación de cocinas modulares premiu
 
         </div>
       </div>
+
+      {/* MOBILE (vertical layout) */}
+      <div className="md:hidden w-full px-6 py-10 space-y-10">
+        {/* Header */}
+        <div className="space-y-4">
+          <h2
+            className="font-medium text-[#0A0A0A]"
+            style={{
+              fontFamily: "'Cabinet Grotesk', sans-serif",
+              fontSize: "1.8rem",
+              lineHeight: "2.2rem",
+            }}
+          >
+            Productos
+          </h2>
+          <p
+            className="text-[#0A0A0A]"
+            style={{
+              fontFamily: "'Cabinet Grotesk', sans-serif",
+              fontWeight: 500,
+              fontSize: "1.2rem",
+              lineHeight: "1.7rem",
+            }}
+          >
+            En <b>OUMA</b> colaboramos con marcas internacionales que comparten nuestra visión: precisión,
+            diseño y calidad constructiva. Cada una aporta un lenguaje técnico y estético que se integra a
+            nuestros proyectos, permitiéndonos ofrecer soluciones arquitectónicas completas y duraderas.
+          </p>
+        </div>
+
+        {/* Main image */}
+        <div className="overflow-hidden bg-[#D9D9D9] rounded">
+          <img
+            src={images.main}
+            alt="Productos"
+            className="object-cover w-full h-auto transition-transform duration-300 hover:scale-[1.03]"
+            draggable={false}
+            loading="lazy"
+          />
+        </div>
+
+        {/* Rational */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3
+              className="font-medium text-[#0A0A0A]"
+              style={{
+                fontFamily: "'Cabinet Grotesk', sans-serif",
+                fontSize: "1.6rem",
+                lineHeight: "2rem",
+              }}
+            >
+              Rational Küchen
+            </h3>
+            <img
+              src={images.rational}
+              alt="Rational Logo"
+              className="object-contain"
+              style={{ width: "6.5rem", height: "2rem" }}
+            />
+          </div>
+          <p className="text-[#A6A6A6]" style={{ fontFamily: "'Cabinet Grotesk', sans-serif", fontWeight: 500, fontSize: "1rem" }}>
+            Alemania
+          </p>
+          <p
+            style={{
+              fontFamily: "'Cabinet Grotesk', sans-serif",
+              fontWeight: 500,
+              fontSize: "1.1rem",
+              lineHeight: "1.6rem",
+            }}
+          >
+            La marca Rational refleja la excelencia del diseño alemán aplicado a la cocina. Su filosofía une
+            funcionalidad, ergonomía y elegancia minimalista, alineada con el espíritu de OUMA: espacios con
+            alma y precisión constructiva. Trabajamos con Rational en el diseño e instalación de cocinas modulares
+            premium para hoteles y viviendas exclusivas.
+          </p>
+        </div>
+
+        {/* Bravat */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3
+              className="font-medium text-[#0A0A0A]"
+              style={{
+                fontFamily: "'Cabinet Grotesk', sans-serif",
+                fontSize: "1.6rem",
+                lineHeight: "2rem",
+              }}
+            >
+              Bravat by Dietsche
+            </h3>
+            <img
+              src={images.bravat}
+              alt="Bravat Logo"
+              className="object-contain"
+              style={{ width: "7rem", height: "2.4rem" }}
+            />
+          </div>
+          <p className="text-[#A6A6A6]" style={{ fontFamily: "'Cabinet Grotesk', sans-serif", fontWeight: 500, fontSize: "1rem" }}>
+            Alemania, China, Vietnam
+          </p>
+          <p
+            style={{
+              fontFamily: "'Cabinet Grotesk', sans-serif",
+              fontWeight: 500,
+              fontSize: "1.1rem",
+              lineHeight: "1.7rem",
+            }}
+          >
+            Desde 1873, Bravat representa la tradición alemana en diseño sanitario de alta gama. Su producción combina
+            ingeniería europea con tecnología asiática, garantizando eficiencia, sustentabilidad y estética contemporánea.
+            Integramos su línea de grifería, lavabos y accesorios en proyectos residenciales y hoteleros de alto nivel.
+          </p>
+        </div>
+
+        {/* Stanley */}
+        <div className="space-y-3">
+          <h3
+            className="font-medium text-[#0A0A0A]"
+            style={{ fontFamily: "'Cabinet Grotesk', sans-serif", fontSize: "1.6rem", lineHeight: "2rem" }}
+          >
+            Stanley
+          </h3>
+          <p className="text-[#A6A6A6]" style={{ fontFamily: "'Cabinet Grotesk', sans-serif", fontWeight: 500, fontSize: "1rem" }}>
+            Estados Unidos, China
+          </p>
+          <p
+            style={{
+              fontFamily: "'Cabinet Grotesk', sans-serif",
+              fontWeight: 500,
+              fontSize: "1.1rem",
+              lineHeight: "1.6rem",
+            }}
+          >
+            Con licencia en 17 países asiáticos, Stanley combina innovación y resistencia en herrajes, cerraduras y
+            sistemas de carpintería metálica. Su enfoque técnico permite integrar soluciones seguras y estéticas en
+            proyectos arquitectónicos de cualquier escala.
+          </p>
+        </div>
+      </div>
     </section>
   );
 }

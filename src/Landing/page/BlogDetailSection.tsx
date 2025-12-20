@@ -124,14 +124,16 @@ export default function BlogDetailSection() {
 
   return (
     <main className="container mx-auto max-w-[1440px] px-[clamp(1rem,2vw,3rem)]">
-      {/* Volver */}
-      <div className="text-[clamp(0.9rem,0.8vw,1.2rem)] text-neutral-400 mb-[clamp(1.5rem,2vw,3rem)]">
-        <button onClick={handleBack} className="hover:text-neutral-700">
-          ← Volver
-        </button>
-      </div>
+      {/* Desktop: horizontal scroller (unchanged) */}
+      <div className="hidden md:block">
+        {/* Volver */}
+        <div className="text-[clamp(0.9rem,0.8vw,1.2rem)] text-neutral-400 mb-[clamp(1.5rem,2vw,3rem)]">
+          <button onClick={handleBack} className="hover:text-neutral-700">
+            ← Volver
+          </button>
+        </div>
 
-      <HScrollRow>
+        <HScrollRow>
         {/* Columna izquierda */}
         <div className=" align-top">
           <div
@@ -228,7 +230,82 @@ export default function BlogDetailSection() {
             />
           </div>
         </div>
-      </HScrollRow>
+        </HScrollRow>
+      </div>
+
+      {/* Mobile: vertical scroll container */}
+      <div
+        className="md:hidden"
+        style={{
+          height: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
+        }}
+      >
+        <div className="px-3 pt-4 flex flex-col gap-4">
+          {/* Volver */}
+          <div>
+            <button onClick={handleBack} className="text-[13px] text-neutral-500 hover:text-neutral-800">← Volver</button>
+          </div>
+
+          {/* Imagen izquierda + título y descripción */}
+          <div>
+            <div className="overflow-hidden bg-[#D9D9D9] mb-3">
+              <img
+                ref={targetImgRef}
+                src={resolveImg(article.images?.left)}
+                alt={article.title}
+                className="w-full h-auto object-cover"
+                draggable={false}
+                data-shared-key={sharedKey}
+                style={{
+                  opacity: hideUntilDone ? 0 : 1,
+                  visibility: hideUntilDone ? "hidden" : "visible",
+                  transition: "opacity 160ms ease, visibility 0s linear 160ms",
+                }}
+              />
+            </div>
+            <h1 className="font-medium text-neutral-900 text-[22px] leading-tight">{article.title}</h1>
+            <p className="text-[#A6A6A6] font-medium text-[14px] leading-[1.4]">{article.description}</p>
+          </div>
+
+          {/* Texto principal */}
+          <article>
+            <p
+              className="font-medium text-neutral-900 text-[15px] leading-[1.4]"
+              style={{ fontFamily: '"Cabinet Grotesk", sans-serif' }}
+              dangerouslySetInnerHTML={{
+                __html: `
+                  En <span style="font-weight:700;">OUMA</span> tenemos una relación directa con los materiales.
+                  Nos gusta escucharlos antes de intervenirlos.
+                  Entender lo que quieren decir sin cubrirlos de más.<br />
+                  La madera, por ejemplo, ha sido durante años víctima del barniz total:<br />
+                  ese impulso de dejarla brillante, sellada, protegida.
+                  Pero ese brillo muchas veces la despoja de lo que la hace viva.<br /><br />
+                  En su estado crudo, la madera habla.<br /><br />
+                  Se contrae, se abre, se oxida, cambia de color.<br />
+                  Su superficie registra el paso del tiempo, el clima, el contacto humano.<br />
+                  Cada grieta es una conversación con el entorno.
+                `,
+              }}
+            />
+          </article>
+
+          {/* Imagen derecha */}
+          <div className="overflow-hidden bg-[#D9D9D9]">
+            <img
+              src={resolveImg(article.images?.right)}
+              alt="Imagen derecha"
+              className="w-full h-auto object-cover"
+              draggable={false}
+            />
+          </div>
+
+          {/* Bottom padding */}
+          <div className="pb-2" />
+        </div>
+      </div>
     </main>
   );
 }
