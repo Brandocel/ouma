@@ -112,7 +112,7 @@ export const PROJECTS: Project[] = [
   {
     slug: "sian-habitats",
     folder: "SIAN HABITATS",
-    file: "Sian Habitats.png", // ✅ cover.png (y opcional coverGrande.png)
+    file: "Sian Habitats.png",
     title: "Sian Habitats",
     place: "CANCÚN, QUINTANA ROO",
     year: "2025",
