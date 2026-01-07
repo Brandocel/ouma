@@ -388,20 +388,19 @@ export default function BlogSection() {
 
   return (
     <section
-      className="mx-auto w-full max-w-[1440px] px-2 md:px-3 pt-0 md:pt-40 min-h-0 flex flex-col justify-center"
+      className="mx-auto w-full max-w-[1440px] px-2 md:px-3 flex flex-col justify-center"
       style={{
         minHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
-        maxHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
       }}
     >
       <div
         ref={scrollerRef}
-        className="no-scrollbar overflow-x-auto overflow-y-hidden snap-x snap-proximity cursor-grab select-none overscroll-x-contain min-h-0 flex items-center md:block md:flex-1"
+        className="no-scrollbar overflow-x-auto overflow-y-hidden snap-x snap-proximity cursor-grab select-none overscroll-x-contain"
         style={{ touchAction: "pan-y" }}
         data-cursor="drag"
         data-cursor-label="Arrastra"
       >
-        <div ref={innerRef} className="flex w-max gap-6 pr-0">
+        <div ref={innerRef} className="flex w-max gap-6 pr-0 py-4">
           {items.map((it) => (
             <article
               key={it.file}

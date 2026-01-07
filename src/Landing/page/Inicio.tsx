@@ -302,17 +302,19 @@ export default function Inicio() {
         inner.style.willChange = "transform";
 
         const naturalH = inner.offsetHeight; // imagen (aspect) + textos + paddings
-        const safe = 6; // respirito mínimo
+        // Aumenta el margen de seguridad en móvil
+        const isMobile = window.innerWidth < 768;
+        const safe = isMobile ? 80 : 40; // más espacio en móvil
         const maxH = Math.max(0, usefulPx - safe);
 
         const scale = naturalH > 0 ? Math.min(1, maxH / naturalH) : 1;
 
-        inner.style.transformOrigin = "top left";
+        inner.style.transformOrigin = "top center"; // centrado
         inner.style.transform = scale < 1 ? `translateZ(0) scale(${scale})` : "none";
 
-        // para que el contenedor no “brinque”, fija altura visual del article
-        (card.style as any).minHeight = `${Math.min(naturalH * scale, maxH)}px`;
-        (card.style as any).maxHeight = `${Math.min(naturalH * scale, maxH)}px`;
+        // Removemos las restricciones de height del article para permitir centrado
+        card.style.removeProperty("min-height");
+        card.style.removeProperty("max-height");
       });
     };
 
@@ -354,20 +356,19 @@ export default function Inicio() {
   return (
     <section
       ref={sectionRef}
-      className="mx-auto w-full max-w-[1440px] px-2 md:px-3 pt-0 md:pt-40 min-h-0 flex flex-col justify-center"
+      className="mx-auto w-full max-w-[1440px] px-2 md:px-3 flex flex-col justify-center"
       style={{
         minHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
-        maxHeight: "calc(100svh - var(--header-h,0px) - var(--footer-h,0px))",
       }}
     >
       <div
         ref={scrollerRef}
-        className="no-scrollbar overflow-x-auto overflow-y-hidden snap-x snap-proximity cursor-grab select-none overscroll-x-contain min-h-0 flex items-center md:block md:flex-1"
+        className="no-scrollbar overflow-x-auto overflow-y-hidden snap-x snap-proximity cursor-grab select-none overscroll-x-contain"
         style={{ touchAction: "pan-y" }}
         data-cursor="drag"
         data-cursor-label="Arrastra"
       >
-        <div ref={innerRef} className="flex w-max gap-6 pr-0">
+        <div ref={innerRef} className="flex w-max gap-6 pr-0 py-4">
           {items.map((it) => (
             <article
               key={it.file}
