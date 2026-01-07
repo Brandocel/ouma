@@ -59,7 +59,7 @@ export default function ProyectoDetalle() {
   const project = slug ? findProjectBySlug(slug) : undefined;
 
   const targetImgRef = useRef<HTMLImageElement | null>(null);
-  const [waitingForOverlay, setWaitingForOverlay] = useState(true);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   // ======= Altura útil (entre header y footer) =======
   const pageRef = useRef<HTMLElement | null>(null);
@@ -116,26 +116,11 @@ export default function ProyectoDetalle() {
     return () => { ro.disconnect(); window.removeEventListener("resize", resize); };
   }, []);
 
+  // Detectar cuando la imagen carga
   useEffect(() => {
-    const onDone = () => setWaitingForOverlay(false);
-    window.addEventListener("shared-image-done", onDone);
-    const fallback = window.setTimeout(() => setWaitingForOverlay(false), 900);
-    return () => { window.removeEventListener("shared-image-done", onDone); clearTimeout(fallback); };
-  }, [slug]);
-
-  useEffect(() => {
-    const img = targetImgRef.current;
-    if (!img) return;
-    const sendRect = () => {
-      const r = img.getBoundingClientRect();
-      const to: Rect = { top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height };
-      window.dispatchEvent(new CustomEvent("shared-image-animate", { detail: { to } }));
-    };
-    const sendRectSynced = () => requestAnimationFrame(() => requestAnimationFrame(sendRect));
-    if (img.complete && img.naturalWidth) { sendRectSynced(); return; }
-    const onLoad = () => sendRectSynced();
-    img.addEventListener("load", onLoad);
-    return () => img.removeEventListener("load", onLoad);
+    setImgLoaded(false);
+    const timer = setTimeout(() => setImgLoaded(true), 100);
+    return () => clearTimeout(timer);
   }, [slug]);
 
   if (!project) {
@@ -190,13 +175,6 @@ export default function ProyectoDetalle() {
 
   const handleBack = (ev?: React.MouseEvent) => {
     ev?.preventDefault();
-    const img = targetImgRef.current;
-    if (!img) { navigate("/"); return; }
-    const rect = img.getBoundingClientRect();
-    const from: Rect = { top: rect.top + window.scrollY, left: rect.left + window.scrollX, width: rect.width, height: rect.height };
-    const objectFit = getComputedStyle(img).objectFit || "cover";
-    const detail = { src: img.src, from, objectFit, direction: "back" as const, sharedKey };
-    (window as any).__sharedImagePending = detail;
     navigate("/");
   };
 
@@ -254,10 +232,13 @@ export default function ProyectoDetalle() {
                   decoding="async"
                   loading="eager"
                   fetchPriority="high"
+                  onLoad={() => setImgLoaded(true)}
                   style={{
                     maxHeight: "min(78vh, calc(var(--useful-h, 100vh) * 0.78))",
                     imageRendering: "auto",
-                    visibility: waitingForOverlay ? "hidden" : "visible",
+                    opacity: imgLoaded ? 1 : 0,
+                    transform: imgLoaded ? "scale(1)" : "scale(0.95)",
+                    transition: "opacity 0.6s cubic-bezier(0.16, 0.84, 0.44, 1), transform 0.6s cubic-bezier(0.16, 0.84, 0.44, 1)",
                   }}
                 />
 
@@ -348,12 +329,11 @@ export default function ProyectoDetalle() {
               fetchPriority="high"
               style={{
                 imageRendering: "auto",
-                visibility: waitingForOverlay ? "hidden" : "visible",
               }}
             />
           </div>
 
-          {/* Mosaico extra en columna (scroll vertical) */}
+          {/* Mosaico extra en columna (scroll vertical) */} 
           {extras.length > 0 && (
             <div className="px-1">
               <div className="grid grid-cols-2 gap-3">
