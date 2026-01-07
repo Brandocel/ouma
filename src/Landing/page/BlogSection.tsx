@@ -308,22 +308,11 @@ export default function BlogSection() {
         const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
         const card = hit?.closest?.("article[role='button']") as HTMLElement | null;
         if (card) {
-          const imgEl = card.querySelector("img") as HTMLImageElement | null;
-          if (imgEl) {
-            const r = imgEl.getBoundingClientRect();
-            const from = {
-              top: r.top + window.scrollY,
-              left: r.left + window.scrollX,
-              width: r.width,
-              height: r.height,
-            };
-            const objectFit = getComputedStyle(imgEl).objectFit || "cover";
-            window.dispatchEvent(
-              new CustomEvent("shared-image-start", {
-                detail: { src: imgEl.src, from, objectFit, direction: "forward" },
-              })
-            );
-          }
+          // Ocultar toda la tarjeta al instante
+          card.style.transition = "none";
+          card.style.opacity = "0";
+          card.style.pointerEvents = "none";
+
           const slug = card.getAttribute("data-slug");
           if (slug) navigate(`/blog/${slug}`);
           return;
