@@ -206,27 +206,24 @@ export default function ServicesSection() {
         <div
           className="flex justify-start items-start mx-auto"
           style={{
-            gap: "clamp(2rem, 4vw, 4.5rem)",
-            paddingLeft: "clamp(1.4rem, 7.3vw, 14rem)",
-            paddingRight: "clamp(1.4rem, 7.3vw, 14rem)",
+            gap: "clamp(2.5rem, 3.5vw, 4rem)",
+            paddingLeft: "clamp(0.5rem, 1vw, 1rem)",
+            paddingRight: "clamp(0.5rem, 1vw, 1rem)",
             minWidth: "fit-content",
+            alignItems: "flex-start",
           }}
         >
           {services.map((s) => (
             <div
               key={s.id}
               onClick={() => handleCardClick(s.slug)}
-              className="flex flex-col cursor-pointer transition-transform duration-300 hover:scale-[1.01]"
-              style={{
-                width: "clamp(45rem, 30vw, 57.5rem)",
-                flexShrink: 0,
-              }}
+              className="flex flex-col cursor-pointer transition-transform duration-300 hover:scale-[1.01] snap-start shrink-0 w-[85vw] sm:w-[48vw] lg:w-[340px] xl:w-[320px] max-w-[360px]"
             >
               <h2
                 className="font-medium"
                 style={{
-                  fontSize: "clamp(1.8rem, 1.9vw, 3.8rem)",
-                  lineHeight: "clamp(2.4rem, 2.4vw, 5rem)",
+                  fontSize: "clamp(0.95rem, 1vw, 1.4rem)",
+                  lineHeight: "1.2",
                   color: "#A6A6A6",
                 }}
               >
@@ -237,27 +234,23 @@ export default function ServicesSection() {
               <p
                 className="font-medium text-[#0A0A0A]"
                 style={{
-                  fontSize: "clamp(1.2rem, 1vw, 1.6rem)",
-                  lineHeight: "clamp(1.6rem, 1.4vw, 2.3rem)",
-                  marginTop: "clamp(1rem, 1.5vw, 2rem)",
-                  marginBottom: "clamp(2rem, 2.5vw, 3rem)",
-                  maxWidth: "clamp(40rem, 45vw, 57.5rem)",
+                  fontSize: "clamp(0.65rem, 0.7vw, 0.85rem)",
+                  lineHeight: "1.4",
+                  marginTop: "clamp(0.6rem, 0.8vw, 1rem)",
+                  marginBottom: "clamp(1rem, 1.2vw, 1.4rem)",
+                  minHeight: "clamp(4.5rem, 5vw, 6rem)",
                 }}
               >
                 {s.description}
               </p>
 
               <div
-                className="overflow-hidden"
-                style={{
-                  width: "clamp(30rem, 23vw, 44.3rem)",
-                  height: "clamp(20rem, 18vw, 28rem)",
-                }}
+                className="aspect-[4/3] overflow-hidden"
               >
                 <img
                   src={resolveServicioImg(s.image)}
                   alt={s.title}
-                  className="object-cover w-full h-full transition-transform duration-500 hover:scale-105"
+                  className="h-full w-full object-cover object-center transition-transform duration-300 ease-in-out hover:scale-[1.03]"
                   draggable={false}
                   loading="lazy"
                 />
