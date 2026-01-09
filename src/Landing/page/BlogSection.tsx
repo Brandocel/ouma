@@ -6,23 +6,13 @@ import React, {
   useRef,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { blogArticles } from "../api/blog";
 
 /** 🖼️ Carga de imágenes desde /assets/blog */
 const imgs = import.meta.glob("../../assets/blog/*.{png,jpg,jpeg}", {
   eager: true,
   query: "?url",
 }) as Record<string, { default: string }>;
-
-/** 📄 Metadatos base por archivo (puedes ampliarlo luego en blog.ts) */
-const metaByFile: Record<string, { title: string; description: string }> = {
-  "img5.png": { title: "La Madera sin Disfráz", description: "Una reflexión de OUMA" },
-  "img6.png": { title: "Nombre del Artículo", description: "Descripción del artículo" },
-  "img7.png": { title: "Nombre del Artículo", description: "Descripción del artículo" },
-  "img8.png": { title: "Nombre del Artículo", description: "Descripción del artículo" },
-};
-
-/** Orden de aparición */
-const ORDER = ["img5.png", "img6.png", "img7.png", "img8.png"];
 
 type Rect = { top: number; left: number; width: number; height: number };
 
@@ -53,14 +43,6 @@ const sharedKeyOf = (anyFilename: string) =>
   fn(anyFilename)
     .toLowerCase()
     .replace(/(?:[_\-\s]?grande)(?=\.[^.]+$)/i, "");
-
-const slugify = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 
 /** 📰 BlogSection: réplica visual y funcional de Inicio.tsx */
 export default function BlogSection() {
@@ -97,29 +79,20 @@ export default function BlogSection() {
     };
   }, []);
 
-  /** 🧮 Generar lista de artículos (igual que projects) */
+  /** 🧮 Generar lista de artículos desde blogArticles */
   const items = useMemo(() => {
-    const raw = Object.entries(imgs).map(([path]) => {
-      const original = fn(path);
-      const baseKey = sharedKeyOf(original);
-      const grandeSrc = toGrandeIfExists(original);
-      const meta =
-        metaByFile[original] ?? {
-          title: original.replace(/\.(png|jpg|jpeg)$/i, ""),
-          description: "—",
-        };
-      const slug = slugify(meta.title);
-      return { file: original, src: grandeSrc, slug, key: baseKey, ...meta };
+    return blogArticles.map((article) => {
+      const baseKey = sharedKeyOf(article.file);
+      const grandeSrc = toGrandeIfExists(article.file);
+      return {
+        file: article.file,
+        src: grandeSrc,
+        slug: article.slug,
+        key: baseKey,
+        title: article.title,
+        description: article.description,
+      };
     });
-
-    const pos = (f: string) => {
-      const i = ORDER.indexOf(f);
-      return i === -1 ? 9999 : i;
-    };
-
-    return raw.sort(
-      (a, b) => pos(a.file) - pos(b.file) || a.file.localeCompare(b.file)
-    );
   }, []);
 
   /** 🌀 Transición “back” compartida */
@@ -430,6 +403,33 @@ export default function BlogSection() {
               </div>
             </article>
           ))}
+
+          {/* Tarjeta "Próximamente" */}
+          <div
+            className="
+              snap-start shrink-0
+              w-[85vw] sm:w-[48vw] lg:w-[340px] xl:w-[320px] max-w-[360px]
+            "
+          >
+            <div
+              className="aspect-[4/3] overflow-hidden bg-neutral-100 flex items-center justify-center"
+              data-cursor="drag"
+              data-cursor-label="Arrastra"
+            >
+              <span className="text-neutral-400 font-medium text-[20px]">
+                Próximamente
+              </span>
+            </div>
+
+            <div className="pt-3">
+              <h3 className="font-medium text-neutral-400 text-[17px] leading-[1.25]">
+                Más contenido en camino
+              </h3>
+              <p className="font-medium text-neutral-300 text-[11px] tracking-wide">
+                OUMA
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>

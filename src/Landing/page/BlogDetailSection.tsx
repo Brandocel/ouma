@@ -134,13 +134,16 @@ export default function BlogDetailSection() {
         </div>
 
         <HScrollRow>
-        {/* Columna izquierda */}
-        <div className=" align-top">
+        {/* Columna 1: Imagen izquierda + título y descripción */}
+        <div className="shrink-0 align-top" style={{ 
+          width: "clamp(28rem, 30vw, 48rem)",
+          maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)"
+        }}>
           <div
             className="overflow-hidden bg-[#D9D9D9] mb-[clamp(1.5rem,2vw,2.5rem)]"
             style={{
-              width: "clamp(28rem, 25vw, 48rem)",
-              height: "clamp(17rem, 16vw, 30.2rem)",
+              width: "100%",
+              height: "clamp(17rem, 20vw, 30.2rem)",
             }}
           >
             <img
@@ -159,10 +162,10 @@ export default function BlogDetailSection() {
           </div>
 
           <h1
-            className="font-medium text-neutral-900"
+            className="font-medium text-neutral-900 mb-3"
             style={{
-              fontSize: "clamp(2.8rem,3vw,3rem)",
-              lineHeight: "clamp(3.4rem,3.5vw,6rem)",
+              fontSize: "clamp(2.2rem,2.5vw,3rem)",
+              lineHeight: "1.2",
             }}
           >
             {article.title}
@@ -170,66 +173,116 @@ export default function BlogDetailSection() {
           <p
             className="text-[#A6A6A6] font-medium"
             style={{
-              fontSize: "clamp(1.3rem,1.4vw,2rem)",
-              lineHeight: "clamp(1.7rem,1.8vw,2.5rem)",
+              fontSize: "clamp(1.1rem,1.2vw,1.5rem)",
+              lineHeight: "1.4",
             }}
           >
             {article.description}
           </p>
         </div>
 
-{/* Columna central (Texto principal) */}
-<article
-  className="shrink-0 align-top"
-  style={{
-    width: "667px",
-    maxWidth: "667px",
-  }}
->
-  <p
-    className="font-medium text-neutral-900"
-    style={{
-      fontFamily: '"Cabinet Grotesk", sans-serif',
-      fontSize: "1.0625rem", // 17px
-      lineHeight: "100%",
-      letterSpacing: "0em",
-      fontWeight: 500,
-    }}
-    dangerouslySetInnerHTML={{
-      __html: `
-        En <span style="font-weight:700;">OUMA</span> tenemos una relación directa con los materiales.
-        Nos gusta escucharlos antes de intervenirlos.
-        Entender lo que quieren decir sin cubrirlos de más.<br />
-        La madera, por ejemplo, ha sido durante años víctima del barniz total:<br />
-        ese impulso de dejarla brillante, sellada, protegida.
-        Pero ese brillo muchas veces la despoja de lo que la hace viva.<br /><br />
-        En su estado crudo, la madera habla.<br /><br /> <br /><br /><br /><br /><br />
-        Se contrae, se abre, se oxida, cambia de color.<br />
-        Su superficie registra el paso del tiempo, el clima, el contacto humano.<br />
-        Cada grieta es una conversación con el entorno.
-      `,
-    }}
-  />
-</article>
-
-
-        {/* Columna derecha */}
-        <div className="flex flex-col items-start shrink-0 align-top">
-          <div
-            className="overflow-hidden bg-[#D9D9D9]"
-            style={{
-              width: "clamp(40rem,36vw,70rem)",
-              height: "clamp(27rem,25vw,47.8rem)",
-            }}
-          >
-            <img
-              src={resolveImg(article.images?.right)}
-              alt="Imagen derecha"
-              className="w-full h-full object-cover"
-              draggable={false}
-            />
-          </div>
-        </div>
+        {/* Dividir contenido en columnas de ~5-6 párrafos cada una */}
+        {(() => {
+          const itemsPerColumn = 6;
+          const totalContent = article.content || [];
+          const numTextColumns = Math.ceil(totalContent.length / itemsPerColumn);
+          const textColumns = [];
+          const midPoint = Math.floor(numTextColumns / 2); // Punto medio para insertar imagen
+          
+          for (let i = 0; i < numTextColumns; i++) {
+            const start = i * itemsPerColumn;
+            const end = start + itemsPerColumn;
+            const columnContent = totalContent.slice(start, end);
+            
+            textColumns.push(
+              <article
+                key={`col-${i}`}
+                className="shrink-0 align-top space-y-4"
+                style={{
+                  width: "clamp(32rem, 35vw, 50rem)",
+                  maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
+                }}
+              >
+                {columnContent.map((paragraph, idx) => {
+                  const globalIdx = start + idx;
+                  if (paragraph.startsWith("##")) {
+                    return (
+                      <h2
+                        key={globalIdx}
+                        className="font-semibold text-neutral-900 mt-8 mb-4"
+                        style={{
+                          fontFamily: '"Cabinet Grotesk", sans-serif',
+                          fontSize: "1.375rem",
+                          lineHeight: "1.3",
+                        }}
+                      >
+                        {paragraph.replace(/^##\s*/, "")}
+                      </h2>
+                    );
+                  }
+                  if (paragraph.startsWith("•")) {
+                    return (
+                      <div
+                        key={globalIdx}
+                        className="flex gap-3 pl-4"
+                        style={{
+                          fontFamily: '"Cabinet Grotesk", sans-serif',
+                          fontSize: "1.0625rem",
+                          lineHeight: "1.5",
+                          fontWeight: 500,
+                        }}
+                      >
+                        <span className="text-neutral-900 shrink-0">•</span>
+                        <span className="text-neutral-900">{paragraph.substring(1).trim()}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p
+                      key={globalIdx}
+                      className="font-medium text-neutral-900"
+                      style={{
+                        fontFamily: '"Cabinet Grotesk", sans-serif',
+                        fontSize: "1.0625rem",
+                        lineHeight: "1.5",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {paragraph}
+                    </p>
+                  );
+                })}
+              </article>
+            );
+            
+            // Insertar imagen derecha en el punto medio
+            if (i === midPoint && article.images?.right) {
+              textColumns.push(
+                <div key="img-right" className="shrink-0 align-top" style={{
+                  maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)"
+                }}>
+                  <div
+                    className="overflow-hidden bg-[#D9D9D9]"
+                    style={{
+                      width: "clamp(35rem, 40vw, 65rem)",
+                      height: "clamp(23rem, 28vw, 44rem)",
+                      maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
+                    }}
+                  >
+                    <img
+                      src={resolveImg(article.images?.right)}
+                      alt="Detalle"
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+              );
+            }
+          }
+          
+          return textColumns;
+        })()}
         </HScrollRow>
       </div>
 
@@ -271,25 +324,44 @@ export default function BlogDetailSection() {
           </div>
 
           {/* Texto principal */}
-          <article>
-            <p
-              className="font-medium text-neutral-900 text-[15px] leading-[1.4]"
-              style={{ fontFamily: '"Cabinet Grotesk", sans-serif' }}
-              dangerouslySetInnerHTML={{
-                __html: `
-                  En <span style="font-weight:700;">OUMA</span> tenemos una relación directa con los materiales.
-                  Nos gusta escucharlos antes de intervenirlos.
-                  Entender lo que quieren decir sin cubrirlos de más.<br />
-                  La madera, por ejemplo, ha sido durante años víctima del barniz total:<br />
-                  ese impulso de dejarla brillante, sellada, protegida.
-                  Pero ese brillo muchas veces la despoja de lo que la hace viva.<br /><br />
-                  En su estado crudo, la madera habla.<br /><br />
-                  Se contrae, se abre, se oxida, cambia de color.<br />
-                  Su superficie registra el paso del tiempo, el clima, el contacto humano.<br />
-                  Cada grieta es una conversación con el entorno.
-                `,
-              }}
-            />
+          <article className="space-y-3">
+            {article.content?.map((paragraph, idx) => {
+              // Detectar si es un subtítulo (empieza con ##)
+              if (paragraph.startsWith("##")) {
+                return (
+                  <h2
+                    key={idx}
+                    className="font-semibold text-neutral-900 mt-6 mb-3 text-[18px] leading-tight"
+                    style={{ fontFamily: '"Cabinet Grotesk", sans-serif' }}
+                  >
+                    {paragraph.replace(/^##\s*/, "")}
+                  </h2>
+                );
+              }
+              // Detectar si es un elemento de lista (empieza con •)
+              if (paragraph.startsWith("•")) {
+                return (
+                  <div
+                    key={idx}
+                    className="flex gap-2 pl-3 text-[15px] leading-[1.4]"
+                    style={{ fontFamily: '"Cabinet Grotesk", sans-serif' }}
+                  >
+                    <span className="text-neutral-900 shrink-0">•</span>
+                    <span className="text-neutral-900 font-medium">{paragraph.substring(1).trim()}</span>
+                  </div>
+                );
+              }
+              // Párrafo normal
+              return (
+                <p
+                  key={idx}
+                  className="font-medium text-neutral-900 text-[15px] leading-[1.4]"
+                  style={{ fontFamily: '"Cabinet Grotesk", sans-serif' }}
+                >
+                  {paragraph}
+                </p>
+              );
+            })}
           </article>
 
           {/* Imagen derecha */}
