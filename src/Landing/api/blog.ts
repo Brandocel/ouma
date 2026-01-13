@@ -46,7 +46,7 @@ export const blogArticles: BlogArticle[] = [
   },
   {
     slug: "el-nivel-de-manguera",
-    file: "img9.png",
+    file: "Niverl_de_manguera_1.jpg",
     title: "El nivel de manguera: precisión ancestral",
     description: "Una herramienta que sigue superando a muchas tecnologías modernas",
     year: "2024",
@@ -71,8 +71,8 @@ export const blogArticles: BlogArticle[] = [
       "OUMA cree en una arquitectura que no necesita gritar para ser precisa.",
     ],
     images: {
-      left: "img9.png",
-      right: "img9.png"
+      left: "Niverl_de_manguera_1.jpg",
+      right: "Niverl_de_manguera_2.jpg"
     },
   },
   // Aplica la misma regla a los demás artículos:
