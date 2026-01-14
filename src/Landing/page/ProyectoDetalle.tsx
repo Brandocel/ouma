@@ -9,7 +9,6 @@ const FOTOS = import.meta.glob("../../assets/FotosInicio/**/*", {
   query: "?url",
 }) as Record<string, { default: string }>;
 
-type Rect = { top: number; left: number; width: number; height: number };
 
 function fileName(pathOrUrl: string): string {
   const last = pathOrUrl.split("/").pop() ?? "";
@@ -133,7 +132,6 @@ export default function ProyectoDetalle() {
   }
 
   const imgUrl = resolveGrande(project.file);
-  const sharedKey = toSharedKey(project.file);
   const description = (project.description || "").replace(/\n+/g, " ").trim();
 
   /* ✅ SOLO MOSAICO: imágenes del folder (sin tocar lo demás) */

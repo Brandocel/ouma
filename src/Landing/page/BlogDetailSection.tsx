@@ -8,13 +8,12 @@ import React, {
 import { useNavigate, useParams } from "react-router-dom";
 import { getBlogArticleBySlug } from "../api/blog";
 
-const FOTOS = import.meta.glob("../../assets/blog/*", { eager: true, query: "?url" }) as Record<string, { default: string }>;
+/** ✅ Vite safe: carga imágenes desde /src/assets/blog */
+const FOTOS = import.meta.glob("/src/assets/blog/*.{png,jpg,jpeg}", {
+  eager: true,
+  query: "?url",
+}) as Record<string, { default: string }>;
 
-function resolveImg(filename?: string): string {
-  if (!filename) return "";
-  const hit = Object.entries(FOTOS).find(([p]) => p.endsWith("/" + filename));
-  return hit?.[1]?.default ?? "";
-}
 type Rect = { top: number; left: number; width: number; height: number };
 
 function fileName(pathOrUrl: string) {
@@ -26,12 +25,51 @@ function fileName(pathOrUrl: string) {
   }
 }
 
-
-
-
+/** normaliza para comparar */
 function toSharedKey(anyName: string): string {
-  const fn = fileName(anyName).toLowerCase();
+  const fn = fileName(anyName).toLowerCase().trim();
   return fn.replace(/(?:[_\-\s]?grande)(?=\.[^.]+$)/i, "");
+}
+
+/** crea nombre Grande */
+function toGrandeName(filename: string) {
+  const clean = fileName(filename);
+  const m = clean.match(/^(.*)\.([^.]+)$/);
+  const base = m ? m[1] : clean.replace(/\.[^.]+$/, "");
+  const ext = m ? m[2] : clean.split(".").pop() ?? "jpg";
+  return `${base}Grande.${ext}`;
+}
+
+/** ✅ indexa fotos para encontrar rápido */
+const FOTO_INDEX: Record<string, string> = (() => {
+  const acc: Record<string, string> = {};
+  for (const [p, mod] of Object.entries(FOTOS)) {
+    const name = fileName(p);
+    const key = toSharedKey(name);
+    acc[key] = mod.default;
+  }
+  return acc;
+})();
+
+/** ✅ resolve robusto: Grande -> normal -> "" */
+function resolveImg(filename?: string): string {
+  if (!filename) return "";
+  const grande = toGrandeName(filename);
+  const grandeKey = toSharedKey(grande);
+  const normalKey = toSharedKey(filename);
+
+  const hit = FOTO_INDEX[grandeKey] || FOTO_INDEX[normalKey] || "";
+
+  if (!hit) {
+    console.warn(
+      "[BlogDetailSection] No se encontró imagen:",
+      filename,
+      "| grande:",
+      grande
+    );
+  }
+
+  return hit;
 }
 
 export default function BlogDetailSection() {
@@ -55,6 +93,7 @@ export default function BlogDetailSection() {
   useEffect(() => {
     const img = targetImgRef.current;
     if (!img) return;
+
     const sendRect = () => {
       const r = img.getBoundingClientRect();
       const to: Rect = {
@@ -67,6 +106,7 @@ export default function BlogDetailSection() {
         new CustomEvent("shared-image-animate", { detail: { to } })
       );
     };
+
     if (img.complete && img.naturalWidth) {
       sendRect();
       return;
@@ -121,10 +161,9 @@ export default function BlogDetailSection() {
     navigate("/blog");
   };
 
-
   return (
     <main className="container mx-auto max-w-[1440px] px-[clamp(1rem,2vw,3rem)]">
-      {/* Desktop: horizontal scroller (unchanged) */}
+      {/* Desktop: horizontal scroller */}
       <div className="hidden md:block">
         {/* Volver */}
         <div className="text-[clamp(0.9rem,0.8vw,1.2rem)] text-neutral-400 mb-[clamp(1.5rem,2vw,3rem)]">
@@ -134,97 +173,129 @@ export default function BlogDetailSection() {
         </div>
 
         <HScrollRow>
-        {/* Columna 1: Imagen izquierda + título y descripción */}
-        <div className="shrink-0 align-top" style={{ 
-          width: "clamp(28rem, 30vw, 48rem)",
-          maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)"
-        }}>
+          {/* Columna 1: Imagen izquierda + título y descripción */}
           <div
-            className="overflow-hidden bg-[#D9D9D9] mb-[clamp(1.5rem,2vw,2.5rem)]"
+            className="shrink-0 align-top"
             style={{
-              width: "100%",
-              height: "clamp(17rem, 20vw, 30.2rem)",
+              width: "clamp(28rem, 30vw, 48rem)",
+              maxHeight:
+                "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
             }}
           >
-            <img
-              ref={targetImgRef}
-              src={resolveImg(article.images?.left)}
-              alt={article.title}
-              className="w-full h-full object-cover"
-              draggable={false}
-              data-shared-key={sharedKey}
+            <div
+              className="overflow-hidden bg-[#D9D9D9] mb-[clamp(1.5rem,2vw,2.5rem)]"
               style={{
-                opacity: hideUntilDone ? 0 : 1,
-                visibility: hideUntilDone ? "hidden" : "visible",
-                transition: "opacity 160ms ease, visibility 0s linear 160ms",
+                width: "100%",
+                height: "clamp(17rem, 20vw, 30.2rem)",
               }}
-            />
+            >
+              {resolveImg(article.images?.left) ? (
+                <img
+                  ref={targetImgRef}
+                  src={resolveImg(article.images?.left)}
+                  alt={article.title}
+                  className="w-full h-full object-cover"
+                  draggable={false}
+                  data-shared-key={sharedKey}
+                  style={{
+                    opacity: hideUntilDone ? 0 : 1,
+                    visibility: hideUntilDone ? "hidden" : "visible",
+                    transition: "opacity 160ms ease, visibility 0s linear 160ms",
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-neutral-400 font-medium">
+                  Imagen no encontrada
+                </div>
+              )}
+            </div>
+
+            <h1
+              className="font-medium text-neutral-900 mb-3"
+              style={{
+                fontSize: "clamp(2.2rem,2.5vw,3rem)",
+                lineHeight: "1.2",
+              }}
+            >
+              {article.title}
+            </h1>
+            <p
+              className="text-[#A6A6A6] font-medium"
+              style={{
+                fontSize: "clamp(1.1rem,1.2vw,1.5rem)",
+                lineHeight: "1.4",
+              }}
+            >
+              {article.description}
+            </p>
           </div>
 
-          <h1
-            className="font-medium text-neutral-900 mb-3"
-            style={{
-              fontSize: "clamp(2.2rem,2.5vw,3rem)",
-              lineHeight: "1.2",
-            }}
-          >
-            {article.title}
-          </h1>
-          <p
-            className="text-[#A6A6A6] font-medium"
-            style={{
-              fontSize: "clamp(1.1rem,1.2vw,1.5rem)",
-              lineHeight: "1.4",
-            }}
-          >
-            {article.description}
-          </p>
-        </div>
+          {/* Dividir contenido en columnas de ~6 párrafos cada una */}
+          {(() => {
+            const itemsPerColumn = 6;
+            const totalContent = article.content || [];
+            const numTextColumns = Math.ceil(totalContent.length / itemsPerColumn);
+            const textColumns: React.ReactNode[] = [];
+            const midPoint = Math.floor(numTextColumns / 2);
 
-        {/* Dividir contenido en columnas de ~5-6 párrafos cada una */}
-        {(() => {
-          const itemsPerColumn = 6;
-          const totalContent = article.content || [];
-          const numTextColumns = Math.ceil(totalContent.length / itemsPerColumn);
-          const textColumns = [];
-          const midPoint = Math.floor(numTextColumns / 2); // Punto medio para insertar imagen
-          
-          for (let i = 0; i < numTextColumns; i++) {
-            const start = i * itemsPerColumn;
-            const end = start + itemsPerColumn;
-            const columnContent = totalContent.slice(start, end);
-            
-            textColumns.push(
-              <article
-                key={`col-${i}`}
-                className="shrink-0 align-top space-y-4"
-                style={{
-                  width: "clamp(32rem, 35vw, 50rem)",
-                  maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
-                }}
-              >
-                {columnContent.map((paragraph, idx) => {
-                  const globalIdx = start + idx;
-                  if (paragraph.startsWith("##")) {
+            for (let i = 0; i < numTextColumns; i++) {
+              const start = i * itemsPerColumn;
+              const end = start + itemsPerColumn;
+              const columnContent = totalContent.slice(start, end);
+
+              textColumns.push(
+                <article
+                  key={`col-${i}`}
+                  className="shrink-0 align-top space-y-4"
+                  style={{
+                    width: "clamp(32rem, 35vw, 50rem)",
+                    maxHeight:
+                      "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
+                  }}
+                >
+                  {columnContent.map((paragraph, idx) => {
+                    const globalIdx = start + idx;
+
+                    if (paragraph.startsWith("##")) {
+                      return (
+                        <h2
+                          key={globalIdx}
+                          className="font-semibold text-neutral-900 mt-8 mb-4"
+                          style={{
+                            fontFamily: '"Cabinet Grotesk", sans-serif',
+                            fontSize: "1.375rem",
+                            lineHeight: "1.3",
+                          }}
+                        >
+                          {paragraph.replace(/^##\s*/, "")}
+                        </h2>
+                      );
+                    }
+
+                    if (paragraph.startsWith("•")) {
+                      return (
+                        <div
+                          key={globalIdx}
+                          className="flex gap-3 pl-4"
+                          style={{
+                            fontFamily: '"Cabinet Grotesk", sans-serif',
+                            fontSize: "1.0625rem",
+                            lineHeight: "1.5",
+                            fontWeight: 500,
+                          }}
+                        >
+                          <span className="text-neutral-900 shrink-0">•</span>
+                          <span className="text-neutral-900">
+                            {paragraph.substring(1).trim()}
+                          </span>
+                        </div>
+                      );
+                    }
+
                     return (
-                      <h2
+                      <p
                         key={globalIdx}
-                        className="font-semibold text-neutral-900 mt-8 mb-4"
-                        style={{
-                          fontFamily: '"Cabinet Grotesk", sans-serif',
-                          fontSize: "1.375rem",
-                          lineHeight: "1.3",
-                        }}
-                      >
-                        {paragraph.replace(/^##\s*/, "")}
-                      </h2>
-                    );
-                  }
-                  if (paragraph.startsWith("•")) {
-                    return (
-                      <div
-                        key={globalIdx}
-                        className="flex gap-3 pl-4"
+                        className="font-medium text-neutral-900"
                         style={{
                           fontFamily: '"Cabinet Grotesk", sans-serif',
                           fontSize: "1.0625rem",
@@ -232,57 +303,55 @@ export default function BlogDetailSection() {
                           fontWeight: 500,
                         }}
                       >
-                        <span className="text-neutral-900 shrink-0">•</span>
-                        <span className="text-neutral-900">{paragraph.substring(1).trim()}</span>
-                      </div>
+                        {paragraph}
+                      </p>
                     );
-                  }
-                  return (
-                    <p
-                      key={globalIdx}
-                      className="font-medium text-neutral-900"
-                      style={{
-                        fontFamily: '"Cabinet Grotesk", sans-serif',
-                        fontSize: "1.0625rem",
-                        lineHeight: "1.5",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {paragraph}
-                    </p>
-                  );
-                })}
-              </article>
-            );
-            
-            // Insertar imagen derecha en el punto medio
-            if (i === midPoint && article.images?.right) {
-              textColumns.push(
-                <div key="img-right" className="shrink-0 align-top" style={{
-                  maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)"
-                }}>
+                  })}
+                </article>
+              );
+
+              // Insertar imagen derecha en el punto medio
+              if (i === midPoint && article.images?.right) {
+                const rightSrc = resolveImg(article.images.right);
+
+                textColumns.push(
                   <div
-                    className="overflow-hidden bg-[#D9D9D9]"
+                    key="img-right"
+                    className="shrink-0 align-top"
                     style={{
-                      width: "clamp(35rem, 40vw, 65rem)",
-                      height: "clamp(23rem, 28vw, 44rem)",
-                      maxHeight: "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
+                      maxHeight:
+                        "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
                     }}
                   >
-                    <img
-                      src={resolveImg(article.images?.right)}
-                      alt="Detalle"
-                      className="w-full h-full object-cover"
-                      draggable={false}
-                    />
+                    <div
+                      className="overflow-hidden bg-[#D9D9D9]"
+                      style={{
+                        width: "clamp(35rem, 40vw, 65rem)",
+                        height: "clamp(23rem, 28vw, 44rem)",
+                        maxHeight:
+                          "calc(100vh - var(--header-h, 0px) - var(--footer-h, 0px) - 6rem)",
+                      }}
+                    >
+                      {rightSrc ? (
+                        <img
+                          src={rightSrc}
+                          alt="Detalle"
+                          className="w-full h-full object-cover"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-neutral-400 font-medium">
+                          Imagen no encontrada
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
+                );
+              }
             }
-          }
-          
-          return textColumns;
-        })()}
+
+            return textColumns;
+          })()}
         </HScrollRow>
       </div>
 
@@ -299,34 +368,48 @@ export default function BlogDetailSection() {
         <div className="px-3 pt-4 flex flex-col gap-4">
           {/* Volver */}
           <div>
-            <button onClick={handleBack} className="text-[13px] text-neutral-500 hover:text-neutral-800">← Volver</button>
+            <button
+              onClick={handleBack}
+              className="text-[13px] text-neutral-500 hover:text-neutral-800"
+            >
+              ← Volver
+            </button>
           </div>
 
           {/* Imagen izquierda + título y descripción */}
           <div>
             <div className="overflow-hidden bg-[#D9D9D9] mb-3">
-              <img
-                ref={targetImgRef}
-                src={resolveImg(article.images?.left)}
-                alt={article.title}
-                className="w-full h-auto object-cover"
-                draggable={false}
-                data-shared-key={sharedKey}
-                style={{
-                  opacity: hideUntilDone ? 0 : 1,
-                  visibility: hideUntilDone ? "hidden" : "visible",
-                  transition: "opacity 160ms ease, visibility 0s linear 160ms",
-                }}
-              />
+              {resolveImg(article.images?.left) ? (
+                <img
+                  ref={targetImgRef}
+                  src={resolveImg(article.images?.left)}
+                  alt={article.title}
+                  className="w-full h-auto object-cover"
+                  draggable={false}
+                  data-shared-key={sharedKey}
+                  style={{
+                    opacity: hideUntilDone ? 0 : 1,
+                    visibility: hideUntilDone ? "hidden" : "visible",
+                    transition: "opacity 160ms ease, visibility 0s linear 160ms",
+                  }}
+                />
+              ) : (
+                <div className="w-full aspect-[4/3] bg-neutral-100 flex items-center justify-center text-neutral-400 font-medium">
+                  Imagen no encontrada
+                </div>
+              )}
             </div>
-            <h1 className="font-medium text-neutral-900 text-[22px] leading-tight">{article.title}</h1>
-            <p className="text-[#A6A6A6] font-medium text-[14px] leading-[1.4]">{article.description}</p>
+            <h1 className="font-medium text-neutral-900 text-[22px] leading-tight">
+              {article.title}
+            </h1>
+            <p className="text-[#A6A6A6] font-medium text-[14px] leading-[1.4]">
+              {article.description}
+            </p>
           </div>
 
           {/* Texto principal */}
           <article className="space-y-3">
             {article.content?.map((paragraph, idx) => {
-              // Detectar si es un subtítulo (empieza con ##)
               if (paragraph.startsWith("##")) {
                 return (
                   <h2
@@ -338,7 +421,6 @@ export default function BlogDetailSection() {
                   </h2>
                 );
               }
-              // Detectar si es un elemento de lista (empieza con •)
               if (paragraph.startsWith("•")) {
                 return (
                   <div
@@ -347,11 +429,12 @@ export default function BlogDetailSection() {
                     style={{ fontFamily: '"Cabinet Grotesk", sans-serif' }}
                   >
                     <span className="text-neutral-900 shrink-0">•</span>
-                    <span className="text-neutral-900 font-medium">{paragraph.substring(1).trim()}</span>
+                    <span className="text-neutral-900 font-medium">
+                      {paragraph.substring(1).trim()}
+                    </span>
                   </div>
                 );
               }
-              // Párrafo normal
               return (
                 <p
                   key={idx}
@@ -366,15 +449,20 @@ export default function BlogDetailSection() {
 
           {/* Imagen derecha */}
           <div className="overflow-hidden bg-[#D9D9D9]">
-            <img
-              src={resolveImg(article.images?.right)}
-              alt="Imagen derecha"
-              className="w-full h-auto object-cover"
-              draggable={false}
-            />
+            {resolveImg(article.images?.right) ? (
+              <img
+                src={resolveImg(article.images?.right)}
+                alt="Imagen derecha"
+                className="w-full h-auto object-cover"
+                draggable={false}
+              />
+            ) : (
+              <div className="w-full aspect-[4/3] bg-neutral-100 flex items-center justify-center text-neutral-400 font-medium">
+                Imagen no encontrada
+              </div>
+            )}
           </div>
 
-          {/* Bottom padding */}
           <div className="pb-2" />
         </div>
       </div>
@@ -383,7 +471,7 @@ export default function BlogDetailSection() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* ✅ Scroll horizontal actualizado (idéntico al BlogSection) */
+/* ✅ Scroll horizontal actualizado (idéntico al BlogSection, sin romper) */
 /* -------------------------------------------------------------------------- */
 function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -395,6 +483,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       `img[data-shared-key="${pending.sharedKey}"]`
     ) as HTMLImageElement | null;
     if (!match) return;
+
     match.style.visibility = "hidden";
     const r = match.getBoundingClientRect();
     const to = {
@@ -403,6 +492,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       width: r.width,
       height: r.height,
     };
+
     window.dispatchEvent(
       new CustomEvent("shared-image-start", { detail: pending })
     );
@@ -434,7 +524,10 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
         return;
       }
       el.scrollLeft -= v;
-      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth) {
+      if (
+        el.scrollLeft <= 0 ||
+        el.scrollLeft >= el.scrollWidth - el.clientWidth
+      ) {
         stopMomentum();
         return;
       }
@@ -445,7 +538,6 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       stopMomentum();
       el.setPointerCapture(e.pointerId);
-      // Removed unused startX assignment
       lastX = e.clientX;
       lastT = performance.now();
       v = 0;
@@ -470,7 +562,6 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
       rafMom = requestAnimationFrame(momentum);
     };
 
-    // Wheel scroll
     const onWheel = (e: WheelEvent) => {
       const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       if (d === 0) return;
@@ -498,6 +589,7 @@ function HScrollRow({ children }: PropsWithChildren<{ className?: string }>) {
     <div
       ref={wrapRef}
       className="no-scrollbar overflow-x-auto overflow-y-hidden cursor-grab select-none flex w-full"
+      // snap igual que el otro componente
       style={{ touchAction: "pan-y", scrollSnapType: "x proximity" }}
     >
       <div className="flex w-max gap-[clamp(2.5rem,4vw,8rem)] items-start pr-1">

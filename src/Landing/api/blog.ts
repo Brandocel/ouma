@@ -15,7 +15,7 @@ export const blogArticles: BlogArticle[] = [
     slug: "la-madera-sin-disfraz",
     // ⛳ Debe ser el MISMO nombre de archivo que usas a la izquierda
     // (sin rutas, solo el filename, porque el glob busca por filename)
-    file: "img5.png",        // <-- antes: "img5.png"
+    file: "Madera_sin_disfraz_1.jpg",        // <-- antes: "img5.png"
     title: "La madera sin disfraz",
     description: "Materialidad honesta como postura arquitectónica",
     year: "2024",
@@ -40,8 +40,8 @@ export const blogArticles: BlogArticle[] = [
       "Cuando la madera se muestra tal como es, el espacio deja de ser un objeto y se convierte en una experiencia viva.",
     ],
     images: {
-      left: "img5.png", // la pequeña (480x302 en layout)
-      right: "img9.png" // la grande (700x478 en layout)
+      left: "Madera_sin_disfraz_2.jpg", // la pequeña (480x302 en layout)
+      right: "Madera_sin_disfraz_3.jpg" // la grande (700x478 en layout)
     },
   },
   {

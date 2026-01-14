@@ -8,8 +8,8 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import { blogArticles } from "../api/blog";
 
-/** 🖼️ Carga de imágenes desde /assets/blog */
-const imgs = import.meta.glob("../../assets/blog/*.{png,jpg,jpeg}", {
+/** ✅ Carga de imágenes desde /src/assets/blog (Vite safe path) */
+const imgs = import.meta.glob("/src/assets/blog/*.{png,jpg,jpeg}", {
   eager: true,
   query: "?url",
 }) as Record<string, { default: string }>;
@@ -26,25 +26,27 @@ const fn = (p: string) => {
   }
 };
 
-const toGrandeIfExists = (filename: string) => {
-  const m = filename.match(/^(.*)\.([^.]+)$/);
-  const base = m ? m[1] : filename.replace(/\.[^.]+$/, "");
-  const ext = m ? m[2] : filename.split(".").pop() ?? "png";
-  const grandeName = `${base}Grande.${ext}`;
-  const hitGrande = Object.entries(imgs).find(([p]) =>
-    p.endsWith("/" + grandeName)
-  );
-  if (hitGrande) return hitGrande[1].default;
-  const hit = Object.entries(imgs).find(([p]) => p.endsWith("/" + filename));
-  return hit?.[1]?.default ?? "";
-};
-
+/**
+ * Normaliza el nombre para comparar de forma tolerante:
+ * - minúsculas
+ * - quita " grande" / "_grande" / "-grande"
+ * - conserva extensión para no mezclar jpg/png
+ */
 const sharedKeyOf = (anyFilename: string) =>
   fn(anyFilename)
     .toLowerCase()
+    .trim()
     .replace(/(?:[_\-\s]?grande)(?=\.[^.]+$)/i, "");
 
-/** 📰 BlogSection: réplica visual y funcional de Inicio.tsx */
+/** Genera el nombre "Grande" si aplica */
+const toGrandeName = (filename: string) => {
+  const clean = fn(filename);
+  const m = clean.match(/^(.*)\.([^.]+)$/);
+  const base = m ? m[1] : clean.replace(/\.[^.]+$/, "");
+  const ext = m ? m[2] : clean.split(".").pop() ?? "jpg";
+  return `${base}Grande.${ext}`;
+};
+
 export default function BlogSection() {
   const navigate = useNavigate();
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -79,21 +81,64 @@ export default function BlogSection() {
     };
   }, []);
 
+  /**
+   * ✅ Creamos un mapa "key => url" una sola vez para buscar fácil
+   * Esto evita fallos por mayúsculas/minúsculas o variaciones.
+   */
+  const imgIndex = useMemo(() => {
+    const acc: Record<string, string> = {};
+    for (const [p, mod] of Object.entries(imgs)) {
+      const name = fn(p); // nombre real del archivo
+      const key = sharedKeyOf(name);
+      acc[key] = mod.default;
+    }
+    return acc;
+  }, []);
+
+  /**
+   * ✅ Resolver imagen con prioridad:
+   * 1) Variante Grande si existe
+   * 2) Variante normal
+   * 3) Fallback (cadena vacía, pero con warn)
+   */
+  const resolveImg = useCallback(
+    (filename: string) => {
+      const grande = toGrandeName(filename);
+      const grandeKey = sharedKeyOf(grande);
+      const normalKey = sharedKeyOf(filename);
+
+      const hit = imgIndex[grandeKey] || imgIndex[normalKey] || "";
+
+      if (!hit) {
+        console.warn(
+          "[BlogSection] No se encontró imagen para:",
+          filename,
+          " | grande:",
+          grande
+        );
+      }
+
+      return hit;
+    },
+    [imgIndex]
+  );
+
   /** 🧮 Generar lista de artículos desde blogArticles */
   const items = useMemo(() => {
     return blogArticles.map((article) => {
       const baseKey = sharedKeyOf(article.file);
-      const grandeSrc = toGrandeIfExists(article.file);
+      const src = resolveImg(article.file);
+
       return {
         file: article.file,
-        src: grandeSrc,
+        src,
         slug: article.slug,
         key: baseKey,
         title: article.title,
         description: article.description,
       };
     });
-  }, []);
+  }, [resolveImg]);
 
   /** 🌀 Transición “back” compartida */
   useLayoutEffect(() => {
@@ -190,7 +235,8 @@ export default function BlogSection() {
       const cur = el.scrollLeft;
       const next = cur + (target - cur) * 0.18;
       el.scrollLeft = Math.abs(next - cur) < 0.5 ? target : next;
-      if (Math.abs(target - el.scrollLeft) > 0.5) raf = requestAnimationFrame(step);
+      if (Math.abs(target - el.scrollLeft) > 0.5)
+        raf = requestAnimationFrame(step);
       else {
         stopRAF();
         armIdle(180);
@@ -230,7 +276,10 @@ export default function BlogSection() {
         return;
       }
       el.scrollLeft -= v;
-      if (el.scrollLeft <= 0 || el.scrollLeft >= el.scrollWidth - el.clientWidth) {
+      if (
+        el.scrollLeft <= 0 ||
+        el.scrollLeft >= el.scrollWidth - el.clientWidth
+      ) {
         stopMomentum();
         armIdle(120);
         return;
@@ -278,8 +327,13 @@ export default function BlogSection() {
 
       // Tap detectado → ir al detalle
       if (totalMoved <= 10 && elapsed <= 250) {
-        const hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-        const card = hit?.closest?.("article[role='button']") as HTMLElement | null;
+        const hit = document.elementFromPoint(
+          e.clientX,
+          e.clientY
+        ) as HTMLElement | null;
+        const card = hit?.closest?.("article[role='button']") as
+          | HTMLElement
+          | null;
         if (card) {
           // Ocultar toda la tarjeta al instante
           card.style.transition = "none";
@@ -339,7 +393,12 @@ export default function BlogSection() {
   );
 
   const handleCardClick = useCallback(
-    (slug: string, ev?: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>) => {
+    (
+      slug: string,
+      ev?:
+        | React.MouseEvent<HTMLElement>
+        | React.KeyboardEvent<HTMLElement>
+    ) => {
       if (draggingRef.current || movedRef.current > 18) return;
       const articleEl = ev?.currentTarget as HTMLElement | null;
       const imgEl = articleEl?.querySelector("img") as HTMLImageElement | null;
@@ -375,7 +434,8 @@ export default function BlogSection() {
               tabIndex={0}
               onClick={(e) => handleCardClick(it.slug, e)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') handleCardClick(it.slug, e);
+                if (e.key === "Enter" || e.key === " ")
+                  handleCardClick(it.slug, e);
               }}
             >
               <div
@@ -383,14 +443,24 @@ export default function BlogSection() {
                 data-cursor="drag"
                 data-cursor-label="Arrastra"
               >
-                <img
-                  src={it.src}
-                  alt={it.title}
-                  className="h-full w-full object-cover object-center transition-transform duration-300 ease-in-out hover:scale-[1.03]"
-                  draggable={false}
-                  onDragStart={(e) => e.preventDefault()}
-                  data-shared-key={it.key}
-                />
+                {it.src ? (
+                  <img
+                    src={it.src}
+                    alt={it.title}
+                    className="h-full w-full object-cover object-center transition-transform duration-300 ease-in-out hover:scale-[1.03]"
+                    draggable={false}
+                    onDragStart={(e) => e.preventDefault()}
+                    data-shared-key={it.key}
+                  />
+                ) : (
+                  // ✅ Fallback visual si falta imagen (para que no se rompa el layout)
+                  <div
+                    className="h-full w-full bg-neutral-100 flex items-center justify-center text-neutral-400 font-medium"
+                    data-shared-key={it.key}
+                  >
+                    Imagen no encontrada
+                  </div>
+                )}
               </div>
 
               <div className="pt-3">

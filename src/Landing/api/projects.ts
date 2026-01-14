@@ -108,19 +108,7 @@ export const PROJECTS: Project[] = [
       "La precisión se vuelve materia.\nCada corte exacto. Cada veta, elegida con intención.\nLa chapa natural envuelve los volúmenes con una continuidad natural, donde la tecnología y la sensibilidad se encuentran.\nUna cocina que habla en silencio: exacta, cálida y atemporal.",
   },
 
-  /* ✅ NUEVO: Sian Habitats */
-  {
-    slug: "sian-habitats",
-    folder: "SIAN HABITATS",
-    file: "Sian Habitats.png",
-    title: "Sian Habitats",
-    place: "CANCÚN, QUINTANA ROO",
-    year: "2025",
-    brief: "Habitar en equilibrio",
-    categories: "DISEÑO ARQUITECTÓNICO",
-    description:
-      "Habitar en equilibrio.\nUn gesto ligero que se eleva del suelo y permite que el paisaje continúe su curso.\n\nLa estructura se abre al exterior, dejando que la luz, el aire y la vegetación entren sin permiso.\nLos límites se diluyen: adentro y afuera conviven en un mismo ritmo.\n\nSian Habitats no busca imponerse, sino convivir.\nUn refugio contemporáneo donde la arquitectura acompaña, protege y respira con quien la habita.",
-  },
+
 ];
 
 export const findProjectBySlug = (slug: string) =>
